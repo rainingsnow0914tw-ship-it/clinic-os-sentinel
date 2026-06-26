@@ -1,7 +1,8 @@
-# 🛡️ 哨兵 The Sentinel — 交接班手冊 v0.3 Phase 1 完成版
+# 🛡️ 哨兵 The Sentinel — 交接班手冊 v0.3 Phase 2 完成版
 
 > **給下一個阿寶**(換對話框接力)
 > 建立:2026-06-27 凌晨(Day 3 動工)
+> Phase 2 補:2026-06-27 早上(同框續做)
 > 上一版:`../clinic-os-sentinel/SENTINEL_HANDOVER.md` v0.2(畫框結束交接版,2026-06-26)
 > 比賽截止:**2026-07-09 14:00 PT**
 
@@ -32,11 +33,23 @@
   > Qwen3.7-max 949 in / 740 out token
 - ✅ commit `6cc0f8a` Day 3 收工(alembic.ini ASCII fix)
 
-**Phase 2 起手點**(下個阿寶從這做):
-- 擴病人 60 → 100(司機指示)
-- 寫 `scripts/seed_heart_layer.py`(從 Jimmy mock allergies/chronic_conditions 字串轉成 4 心臟表)
-- backfill `before_visit` snapshot(每 visit 依序 replay)
-- 四幕劇 patient_007 王阿姨 dataset 寫入
+**Phase 2 也完成**(2026-06-27 早上,Day 3 同框續做):
+- ✅ 4 心臟表 model 全 v3 化(對齊 alembic 0003 欄位 + DemoDataMixin + FK + String not SQLEnum)
+- ✅ `scripts/seed_heart_layer.py`(從 jimmy `external_sources/mock_data.json` 解析 allergies/chronic_conditions)
+- ✅ `scripts/extend_mock_patients.py` 60 → 100(deterministic seed=20260627、中文澳門名 + jimmy 風格混搭、真澳門地址、加強 chronic/allergy 比例、BPH gender filter)
+- ✅ `scripts/reset_dev_data.py` patch:DELETE_ORDER 加心臟層 4 表 + 2 v0.3 表(沒加會 PatientMedication FK violation)
+- ✅ e2e:patients=**100** / patient_flags=**23** / patient_problems=**55** 全進 DB
+- ✅ commit `517a791` Phase 2 收工
+
+**Phase 2.4 王阿姨四幕劇 + 2.5 backfill snapshot 戰術 deferred 到 Phase 5-6**:
+- Mode A/B 還沒做(Phase 6 才接)、現在寫 dataset 是超前部署
+- 對應 [[feedback_2026-05-16_ai_collaboration]] 「不要超前部署」鐵律
+- Phase 5 寫 `evolve_heart_layer_after_visit` 真正需要 dataset 時再回頭做
+
+**Phase 3 起手點**(下個阿寶從這做,v0.3.1 §10):
+- frontend 病人搜尋頁 + 病例瀏覽 timeline
+- 心臟層摘要展示(`to_observe` 淡色 / `confirmed` 亮紅)
+- 整合 jimmy 既有 PatientsPage / VisitPage 到 v3 frontend
 
 ---
 
@@ -65,8 +78,9 @@
 |---|---|
 | 本機 repo | `clinic-os-sentinel-v3/`(Phase 1 後 SSOT)|
 | v0.1 baseline | `clinic-os-sentinel/`(freeze 不動、保留參考)|
-| Latest commit | `6cc0f8a` Day 3 收工 |
-| Git 累積 commit | 3(`9060fa7` / `5237c92` / `6cc0f8a`)|
+| Latest commit | `517a791` Phase 2 收工 |
+| Git 累積 commit | 5(`9060fa7` / `5237c92` / `6cc0f8a` / `a5482d9` / `517a791`)|
+| DB 內 demo data | 100 patient + 23 patient_flag + 55 patient_problem + 5 visit + 30 drug |
 | DB | **PostgreSQL 16 native**(winget install、非 Docker)|
 | DB URL | `postgresql+psycopg://clinic:clinic_dev_pw@localhost:5432/clinic_os` |
 | PG superuser | `postgres` / 密碼 `postgres123`(只本機 dev、不外洩)|
@@ -114,8 +128,8 @@
 | 1 (6/26 凌晨) | 審題 + v0.1 baseline | ✅ |
 | 2 (6/26 凌晨→早) | 修 + Chloe review + v0.3.1 計畫 | ✅ |
 | **3 (6/27 凌晨)** | **Phase 1 起手 + Day 3 收工** | ✅ **完成** |
-| 4 | Phase 2:60→100 擴病人 + seed_heart_layer + 四幕劇 dataset + backfill snapshot | 🟡 下個阿寶 |
-| 5 | Phase 3:病人搜尋頁 + 病例瀏覽 timeline | 🟢 |
+| **3 (6/27 早上)** | **Phase 2 同框續做** | ✅ **完成**(只做 2.0/2.1/2.3/2.6;2.4/2.5 戰術 deferred 到 Phase 5-6) |
+| 4 | Phase 3:病人搜尋頁 + 病例瀏覽 timeline | 🟡 下個阿寶 |
 | 6 | Phase 4:新就診頁 + 4 agent 串通 + ai_drafts review | 🟢 |
 | 7 | Phase 5:心臟層演進邏輯 + ai_drafts 三級 | 🟢 |
 | 8 | Phase 6:舊就診回顧頁 + Mode A/B 切換 + AI 重跑 | 🟢 |
@@ -125,6 +139,15 @@
 | 13 (7/8) | Phase 10:緩衝 + 投稿(7/9 14:00 PT 截止)| 🟢 |
 
 ---
+
+## 🐛 Day 3 早上 Phase 2 踩過的 4 個技術坑
+
+| # | 坑 | 解 |
+|---|---|---|
+| P2-1 | v0.1 4 心臟表 model 跟 v3 alembic 0003 全面 mismatch (欄位名 name vs problem_name / source vs problem_source / 沒 DemoDataMixin / 沒 FK / SQLEnum vs String) | 4 心臟表 model 全 v3 化重寫,對齊 alembic (Phase 1 我 commit 沿用 jimmy 樣板沒對 v0.1 model 是源頭錯) |
+| P2-2 | reset_dev_data 跑到 PatientMedication 炸 `AttributeError: 'PatientMedication' has no attribute 'is_demo_data'` | 4 心臟表加 DemoDataMixin (P2-1 修了) + reset DELETE_ORDER 加 6 個 v0.3 表 |
+| P2-3 | seed_heart_layer 報「40 patients unmatched」 — DB 只有 60 patient,但 mock 已有 100 個 | 兩個 mock_data.json: external_sources/ (jimmy 原始 + 我擴的 100) vs seed_data/ (import_jimmy_mock 處理後 60). 跑 `python -m scripts.import_jimmy_mock --input external_sources/mock_data.json --output seed_data/mock_data.json` re-sync |
+| P2-4 | extend_mock_patients 生 patient_063 F + BPH (男性病) | gen_chronic 加 gender filter,BPH 移到 MALE_ONLY_CHRONICS |
 
 ## 🐛 Day 3 凌晨踩過的 6 個技術坑(Phase 1)
 
