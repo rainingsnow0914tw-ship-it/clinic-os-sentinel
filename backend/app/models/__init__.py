@@ -34,6 +34,23 @@ from app.models.stock_movement import StockMovement
 from app.models.user import User
 from app.models.visit import Visit
 
+# Sentinel 哨兵層心臟 4 表（v0.3 移植自 v0.1 baseline）
+from app.models.patient_baseline import PatientBaseline, BaselineCategory, BaselineSource
+from app.models.patient_flag import (
+    PatientFlag,
+    FlagType,
+    FlagTemporalMode,
+    FlagSeverity,
+    FlagSource,
+    ConfidenceStatus,  # v0.3.1 §7.3
+)
+from app.models.patient_medication import PatientMedication, MedicationCategory, MedicationSource
+from app.models.patient_problem import PatientProblem, ControlStatus, ProblemSource
+
+# v0.3.1 新增表（結構化檢查 + 心臟層快照）
+from app.models.visit_examination import VisitExamination
+from app.models.heart_layer_snapshot import HeartLayerSnapshot
+
 __all__ = [
     # Base
     "Base",
@@ -61,4 +78,23 @@ __all__ = [
     "PrescriptionItem",
     "Invoice",
     "InvoiceItem",
+    # Sentinel 哨兵層心臟 4 表
+    "PatientBaseline",
+    "BaselineCategory",
+    "BaselineSource",
+    "PatientFlag",
+    "FlagType",
+    "FlagTemporalMode",
+    "FlagSeverity",
+    "FlagSource",
+    "PatientMedication",
+    "MedicationCategory",
+    "MedicationSource",
+    "PatientProblem",
+    "ControlStatus",
+    "ProblemSource",
+    "ConfidenceStatus",
+    # v0.3.1 新表
+    "VisitExamination",
+    "HeartLayerSnapshot",
 ]

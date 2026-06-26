@@ -50,6 +50,21 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
     ANTHROPIC_DEFAULT_MODEL: str = "claude-haiku-4-5-20251001"  # TODO: 用前 web_search
 
+    # -------------------- Qwen / DashScope (Sentinel 比賽期 LLM) --------------------
+    # 司機在 PowerShell 試打 qwen-max 已驗證可用(2026-06-26 03:00)
+    # 走 REST API + httpx，不裝 dashscope SDK 避免相依
+    DASHSCOPE_API_KEY: str = ""
+    DASHSCOPE_BASE_URL: str = "https://dashscope-intl.aliyuncs.com/api/v1"
+    QWEN_TEXT_MODEL: str = "qwen-max"
+    QWEN_VISION_MODEL: str = "qwen-vl-max"
+    QWEN_ASR_MODEL: str = "paraformer-v2"
+    QWEN_REQUEST_TIMEOUT: int = 120
+    QWEN_MAX_RETRIES: int = 2
+
+    # -------------------- Sentinel 哨兵層 --------------------
+    SENTINEL_ENABLED: bool = True
+    SENTINEL_DEV_BYPASS_AUTH: bool = False
+
     # -------------------- CORS --------------------
     CORS_ORIGINS: str = "http://localhost:5173"
 
