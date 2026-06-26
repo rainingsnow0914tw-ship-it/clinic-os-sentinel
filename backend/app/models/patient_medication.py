@@ -1,82 +1,94 @@
 """
 ============================================================
-models/patient_medication.py — 心臟表 2:長期用藥清單
+models/patient_medication.py -- 心臟表 2: 長期用藥 (v3 對齊版)
 ============================================================
 Sentinel 哨兵記憶心臟的長期用藥獨立表。
 
-為什麼獨立(不放 problem 的關聯欄位)：
-- 後閘門 agent 撞的是「完整長期用藥清單」(含散落各次就診的)
-- 一個藥可能對應多病(高血壓藥 + 心臟保護)
-- 保健品 / 中藥不一定對應某慢性病但會影響交互作用
+v3 設計變更 (vs v0.1):
+- name -> medication_name (跟 alembic 0003 對齊)
+- source -> medication_source
+- 加 dosage / frequency / is_active (alembic 已有)
+- 移除 for_problem_id / composition_certain (alembic 沒)
+- 加 DemoDataMixin + FK
+- enum 改 String
 
-對應 schemas/sentinel.py 的 HeartMedication。
+對外 API contract 仍是 schemas/sentinel.py 的 HeartMedication (簡名 name)。
 ============================================================
 """
 
 import uuid
-from sqlalchemy import String, Boolean, Uuid, Enum as SQLEnum
-from sqlalchemy.orm import Mapped, mapped_column
 import enum
 
+from sqlalchemy import Boolean, ForeignKey, String, Text
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column
+
 from app.models.base import Base, TimestampMixin
+from app.models.demo_mixin import DemoDataMixin
 
 
 class MedicationCategory(str, enum.Enum):
-    """藥物類別 — 影響規則引擎處理方式。"""
+    """藥物類別 -- 影響規則引擎處理方式。"""
 
-    CHRONIC_DISEASE_MED = "chronic_disease_med"   # 慢性病處方藥
-    SUPPLEMENT = "supplement"                     # 保健品
-    TCM = "tcm"                                   # 中藥 / 中成藥
+    LONG_TERM = "long_term"                       # alembic default
+    CHRONIC_DISEASE_MED = "chronic_disease_med"
+    SHORT_TERM = "short_term"
+    PRN = "prn"
+    SUPPLEMENT = "supplement"
+    TCM = "tcm"
 
 
 class MedicationSource(str, enum.Enum):
-    """資料來源。"""
-
     SELF_REPORT = "self_report"
     VERIFIED = "verified"
     AUTHORITATIVE = "authoritative"
+    INFERRED_FROM_VISIT = "inferred_from_visit"
 
 
-class PatientMedication(Base, TimestampMixin):
-    """病人長期用藥。"""
+class PatientMedication(Base, TimestampMixin, DemoDataMixin):
+    """病人長期用藥 (v3 對齊版)。"""
 
     __tablename__ = "patient_medications"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        Uuid,
+        UUID(as_uuid=True),
         primary_key=True,
-        default=uuid.uuid4,
+        server_default="gen_random_uuid()",
     )
 
-    clinic_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
-    patient_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
-
-    # 藥名(原始寫法，可能是中文/英文/品牌名/學名)
-    name: Mapped[str] = mapped_column(String(200), nullable=False)
-
-    # 類別
-    category: Mapped[MedicationCategory] = mapped_column(
-        SQLEnum(MedicationCategory),
+    clinic_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("clinics.id", ondelete="RESTRICT"),
         nullable=False,
-        default=MedicationCategory.CHRONIC_DISEASE_MED,
+    )
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("patients.id", ondelete="RESTRICT"),
+        nullable=False,
     )
 
-    # 對應哪個 problem(可空，保健品中藥常常沒對應)
-    for_problem_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True, index=True)
-
-    # 成分明確性 — 後閘門 agent 對「成分不明」要特別提醒，不假裝確定
-    composition_certain: Mapped[bool] = mapped_column(
+    medication_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    category: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+        default=MedicationCategory.LONG_TERM.value,
+        server_default=MedicationCategory.LONG_TERM.value,
+    )
+    dosage: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    frequency: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    medication_source: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+        default=MedicationSource.SELF_REPORT.value,
+        server_default=MedicationSource.SELF_REPORT.value,
+    )
+    is_active: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
         default=True,
+        server_default="true",
     )
-
-    # 來源
-    source: Mapped[MedicationSource] = mapped_column(
-        SQLEnum(MedicationSource),
-        nullable=False,
-        default=MedicationSource.SELF_REPORT,
-    )
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     def __repr__(self) -> str:
-        return f"<PatientMedication id={self.id} name={self.name} cat={self.category}>"
+        return f"<PatientMedication id={self.id} name={self.medication_name} cat={self.category}>"

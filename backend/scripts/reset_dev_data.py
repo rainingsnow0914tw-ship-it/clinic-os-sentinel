@@ -35,13 +35,19 @@ from app.models import (
     SOURCE_MOCK,
     Drug,
     DrugBatch,
+    HeartLayerSnapshot,   # v0.3 新增 — Mode A 依賴
     Invoice,
     InvoiceItem,
     Patient,
+    PatientBaseline,      # 心臟表 4
+    PatientFlag,          # 心臟表 3
+    PatientMedication,    # 心臟表 2
+    PatientProblem,       # 心臟表 1
     Prescription,
     PrescriptionItem,
     StockMovement,
     Visit,
+    VisitExamination,     # v0.3 新增
 )
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -74,7 +80,17 @@ def assert_dev_environment() -> str:
 # ============================================================
 # 刪除順序（從 child 到 parent，避免 FK 違反）
 # ⚠️ 順序不能換 — InvoiceItem 必須先刪，否則 Invoice 刪不了
+# v0.3 新加: 心臟層 4 表 + 2 個 visit 衍生表先刪 (它們 FK 到 visit/patient/clinic)
 DELETE_ORDER = [
+    # v0.3 新表 (FK 到 visit/patient)
+    HeartLayerSnapshot,
+    VisitExamination,
+    # 心臟層 4 表 (FK 到 patient/clinic, PatientFlag 還 FK 到 visit)
+    PatientFlag,
+    PatientMedication,
+    PatientProblem,
+    PatientBaseline,
+    # jimmy 既有業務鏈
     InvoiceItem,
     Invoice,
     StockMovement,
