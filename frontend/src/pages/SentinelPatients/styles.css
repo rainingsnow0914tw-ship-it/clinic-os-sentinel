@@ -260,3 +260,80 @@
 }
 
 .error { color: #991b1b; }
+
+/* Vital signs chips */
+.vital-signs {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vs-chip {
+  background: #f3f4f6;
+  color: #1f2937;
+  padding: 3px 9px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: 'SF Mono', Consolas, monospace;
+}
+
+/* Lab list */
+.lab-list {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #fafbfc;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+}
+
+.lab-title {
+  font-size: 12px;
+  color: #374151;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.lab-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  padding: 2px 0;
+}
+
+.lab-row.abnormal .lab-value {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.lab-name {
+  flex-shrink: 0;
+  color: #374151;
+  min-width: 90px;
+}
+
+.lab-value {
+  font-family: 'SF Mono', Consolas, monospace;
+  color: #1f2937;
+}
+
+.lab-ref {
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+.lab-flag {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+/* X-ray / ECG */
+.finding-block {
+  margin-top: 6px;
+  padding: 6px 10px;
+  background: #fef3c7;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #92400e;
+}

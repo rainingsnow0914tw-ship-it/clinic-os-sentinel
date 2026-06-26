@@ -143,6 +143,11 @@ class VisitTimelineItem(BaseModel):
     chief_complaint: str | None = None
     diagnosis: str | None = None
     status: str
+    # v0.3 examination 摘要 (jsonb columns 直接 expose, frontend 自行 render)
+    vital_signs: dict | None = None
+    lab_results: list | None = None
+    xray_findings: str | None = None
+    ecg_findings: str | None = None
 
 
 class PatientDetailResponse(BaseModel):
@@ -299,6 +304,31 @@ def get_patient_detail(
         .order_by(Visit.visit_date.desc())
     ).all()
 
+    # 一次撈所有 visit 的 examination (避免 N+1)
+    visit_ids = [v.id for v in visits]
+    exam_by_vid: dict[UUID, "VisitExamination"] = {}
+    if visit_ids:
+        from app.models import VisitExamination as _VE
+        for e in db.scalars(select(_VE).where(_VE.visit_id.in_(visit_ids))).all():
+            exam_by_vid[e.visit_id] = e
+
+    visit_items = []
+    for v in visits:
+        e = exam_by_vid.get(v.id)
+        visit_items.append(
+            VisitTimelineItem(
+                id=v.id,
+                visit_date=v.visit_date.isoformat() if v.visit_date else "",
+                chief_complaint=v.chief_complaint,
+                diagnosis=v.diagnosis,
+                status=v.status,
+                vital_signs=e.vital_signs_json if e else None,
+                lab_results=e.lab_results_json if e else None,
+                xray_findings=e.xray_findings if e else None,
+                ecg_findings=e.ecg_findings if e else None,
+            )
+        )
+
     return PatientDetailResponse(
         id=p.id,
         name=p.name,
@@ -308,16 +338,7 @@ def get_patient_detail(
         id_number=p.id_number,
         clinic_id=p.clinic_id,
         heart_layer=heart,
-        visits=[
-            VisitTimelineItem(
-                id=v.id,
-                visit_date=v.visit_date.isoformat() if v.visit_date else "",
-                chief_complaint=v.chief_complaint,
-                diagnosis=v.diagnosis,
-                status=v.status,
-            )
-            for v in visits
-        ],
+        visits=visit_items,
     )
 
 

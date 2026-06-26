@@ -170,19 +170,77 @@ function PatientDetailPage() {
         {detail.visits.length === 0 ? (
           <div style={{ color: '#9ca3af', fontSize: 13 }}>(尚無就診紀錄)</div>
         ) : (
-          detail.visits.map((v) => (
-            <div className="visit-row" key={v.id}>
-              <div className="visit-date">
-                📅 {v.visit_date?.split('T')[0] ?? v.visit_date} · [{v.status}]
+          detail.visits.map((v) => {
+            const vs = v.vital_signs;
+            const labs = v.lab_results ?? [];
+            return (
+              <div className="visit-row" key={v.id}>
+                <div className="visit-date">
+                  📅 {v.visit_date?.split('T')[0] ?? v.visit_date} · [{v.status}]
+                </div>
+                {v.chief_complaint && (
+                  <div className="visit-cc">主訴：{v.chief_complaint}</div>
+                )}
+                {v.diagnosis && (
+                  <div className="visit-dx">診斷：{v.diagnosis}</div>
+                )}
+
+                {/* 生命徵象 */}
+                {vs && (
+                  <div className="vital-signs">
+                    {vs.blood_pressure_systolic != null && vs.blood_pressure_diastolic != null && (
+                      <span className="vs-chip">
+                        BP {vs.blood_pressure_systolic}/{vs.blood_pressure_diastolic}
+                      </span>
+                    )}
+                    {vs.heart_rate != null && (
+                      <span className="vs-chip">HR {vs.heart_rate}</span>
+                    )}
+                    {vs.temperature_c != null && (
+                      <span className="vs-chip">T {vs.temperature_c}°C</span>
+                    )}
+                    {vs.oxygen_saturation != null && (
+                      <span className="vs-chip">SpO₂ {vs.oxygen_saturation}%</span>
+                    )}
+                    {vs.respiratory_rate != null && (
+                      <span className="vs-chip">RR {vs.respiratory_rate}</span>
+                    )}
+                  </div>
+                )}
+
+                {/* 實驗室 */}
+                {labs.length > 0 && (
+                  <div className="lab-list">
+                    <div className="lab-title">🧪 實驗室數據</div>
+                    {labs.map((lab, i) => (
+                      <div key={i} className={`lab-row ${lab.is_abnormal ? 'abnormal' : ''}`}>
+                        <span className="lab-name">{lab.name}</span>
+                        <span className="lab-value">
+                          {lab.value} {lab.unit}
+                        </span>
+                        {lab.reference_range && (
+                          <span className="lab-ref">(正常 {lab.reference_range})</span>
+                        )}
+                        {lab.is_abnormal && <span className="lab-flag">↑↓</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* 影像 / ECG */}
+                {v.xray_findings && (
+                  <div className="finding-block">
+                    <strong>🩻 X-ray:</strong> {v.xray_findings}
+                  </div>
+                )}
+                {v.ecg_findings && (
+                  <div className="finding-block">
+                    <strong>📈 ECG:</strong> {v.ecg_findings}
+                  </div>
+                )}
               </div>
-              {v.chief_complaint && (
-                <div className="visit-cc">主訴：{v.chief_complaint}</div>
-              )}
-              {v.diagnosis && (
-                <div className="visit-dx">診斷：{v.diagnosis}</div>
-              )}
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

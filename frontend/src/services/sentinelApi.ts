@@ -64,12 +64,33 @@ export interface HeartLayerSummary {
   baselines: HeartBaseline[];
 }
 
+export interface VitalSigns {
+  blood_pressure_systolic?: number;
+  blood_pressure_diastolic?: number;
+  heart_rate?: number;
+  respiratory_rate?: number;
+  temperature_c?: number;
+  oxygen_saturation?: number;
+}
+
+export interface LabResult {
+  name: string;
+  value: number | string;
+  unit: string;
+  reference_range?: string | null;
+  is_abnormal?: boolean | null;
+}
+
 export interface VisitTimelineItem {
   id: string;
   visit_date: string;
   chief_complaint: string | null;
   diagnosis: string | null;
   status: string;
+  vital_signs?: VitalSigns | null;
+  lab_results?: LabResult[] | null;
+  xray_findings?: string | null;
+  ecg_findings?: string | null;
 }
 
 export interface PatientDetail {
