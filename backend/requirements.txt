@@ -1,0 +1,51 @@
+# ============================================================
+# Clinic OS Backend Dependencies
+# ============================================================
+# Python 3.11+
+# 請定期跑 `pip list --outdated` 檢查更新
+# ============================================================
+
+# === Web framework ===
+fastapi==0.115.0                 # FastAPI 主體
+uvicorn[standard]==0.32.0        # ASGI server，[standard] 含 uvloop / httptools
+
+# === Database ===
+sqlalchemy==2.0.36               # ORM，2.x 是新的 async-friendly API
+alembic==1.13.3                  # Database migration
+psycopg[binary]==3.2.3           # PostgreSQL driver（v3 比 psycopg2 新）
+asyncpg==0.30.0                  # SQLAlchemy async + PostgreSQL 用
+
+# === Validation & Serialization ===
+pydantic==2.9.2                  # FastAPI 的核心
+pydantic-settings==2.6.0         # 從環境變數讀 config
+email-validator==2.2.0           # Pydantic EmailStr 用
+
+# === Auth ===
+firebase-admin==6.5.0            # Firebase ID token 驗證
+python-jose[cryptography]==3.3.0 # JWT（備用）
+
+# === Cloud ===
+google-cloud-storage==2.18.2     # GCS 存 PDF
+google-cloud-secret-manager==2.20.2  # 機密管理
+google-cloud-logging==3.11.2     # Structured logging
+
+# === PDF Generation ===
+weasyprint==62.3                 # HTML → PDF（用於收據、病假紙、轉診信）
+jinja2==3.1.4                    # Template engine（document_templates / ai_prompt_templates）
+
+# === AI Providers（之後要插拔） ===
+google-genai==0.3.0              # Gemini SDK（注意：model 名字會變，使用前 web_search）
+openai==1.54.3                   # OpenAI SDK
+anthropic==0.39.0                # Claude SDK
+
+# === Misc ===
+python-multipart==0.0.12         # FastAPI 處理 multipart form
+httpx==0.27.2                    # async HTTP client（呼叫外部 API 用）
+tenacity==9.0.0                  # Retry decorator
+python-dateutil==2.9.0           # 日期處理
+
+# === Dev only（未來分到 requirements-dev.txt） ===
+pytest==8.3.3
+pytest-asyncio==0.24.0
+ruff==0.7.1                      # linter + formatter
+mypy==1.13.0

@@ -1,0 +1,78 @@
+/* 全域基本樣式 — Sprint 0 先用最簡 reset
+   Sprint 1+ 會引入 Tailwind（已在 package.json）並寫真正的設計系統 */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'PingFang TC', 'Heiti TC', 'Microsoft JhengHei',
+    'Noto Sans TC', sans-serif;
+  font-size: 14px;
+  color: #1f2937;
+  background: #f9fafb;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }
+button { cursor: pointer; font: inherit; }
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  grid-template-rows: 56px 1fr;
+  grid-template-areas:
+    'sidebar topbar'
+    'sidebar main';
+  height: 100vh;
+}
+
+.app-sidebar {
+  grid-area: sidebar;
+  background: #1f2937;
+  color: #f9fafb;
+  padding: 16px 0;
+  overflow-y: auto;
+}
+.app-sidebar h1 {
+  font-size: 16px;
+  padding: 0 16px 16px;
+  border-bottom: 1px solid #374151;
+}
+.app-sidebar nav { display: flex; flex-direction: column; }
+.app-sidebar nav a {
+  padding: 10px 16px;
+  color: #d1d5db;
+}
+.app-sidebar nav a:hover { background: #374151; color: #fff; }
+.app-sidebar nav a.active { background: #2563eb; color: #fff; }
+
+.app-topbar {
+  grid-area: topbar;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 16px;
+}
+
+.app-main {
+  grid-area: main;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.placeholder-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 720px;
+}
+.placeholder-card h2 { margin-bottom: 8px; }
+.placeholder-card p { color: #6b7280; line-height: 1.6; }

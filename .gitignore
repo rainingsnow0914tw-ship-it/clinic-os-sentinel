@@ -1,0 +1,50 @@
+# ─── Python ──────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.eggs/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ─── Node / Frontend ─────────────────────────────────────
+node_modules/
+dist/
+.vite/
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# ─── Env files（永遠不進 git）─────────────────────────────
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env
+frontend/.env.local
+
+# ─── Firebase / GCP ──────────────────────────────────────
+.firebase/
+firebase-debug.log
+*-firebase-adminsdk-*.json
+service-account.json
+gcp-key.json
+
+# ─── 編輯器 / 系統 ────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# ─── 暫存 / 輸出 ──────────────────────────────────────────
+tmp/
+temp/
+*.bak

@@ -1,0 +1,924 @@
+{
+  "metadata": {
+    "version": "from-jimmy-via-adapter",
+    "generator": "scripts/import_jimmy_mock.py",
+    "source": "Jimmy (Gemini) mock data package",
+    "purpose": "Imported from Jimmy's external mock_data.json. Schema mapped to PLAN.md format. Some fields (dose_unit, stock_status, allergies, etc.) ignored."
+  },
+  "patients": [
+    {
+      "ref": "patient_001",
+      "name": "Demo Penicillin Allergy",
+      "gender": "F",
+      "date_of_birth": "1990-05-15",
+      "phone": "6000-0001",
+      "id_number": "TEST-0001"
+    },
+    {
+      "ref": "patient_002",
+      "name": "Demo NSAID Allergy",
+      "gender": "M",
+      "date_of_birth": "1985-08-20",
+      "phone": "6000-0002",
+      "id_number": "TEST-0002"
+    },
+    {
+      "ref": "patient_003",
+      "name": "Same Name Chan",
+      "gender": "M",
+      "date_of_birth": "1980-01-01",
+      "phone": "6000-0003",
+      "id_number": "TEST-0003"
+    },
+    {
+      "ref": "patient_004",
+      "name": "Same Name Chan",
+      "gender": "M",
+      "date_of_birth": "1995-12-12",
+      "phone": "6000-0004",
+      "id_number": "TEST-0004"
+    },
+    {
+      "ref": "patient_005",
+      "name": "Family Member A",
+      "gender": "F",
+      "date_of_birth": "1975-03-03",
+      "phone": "6000-0005",
+      "id_number": "TEST-0005"
+    },
+    {
+      "ref": "patient_006",
+      "name": "Family Member B",
+      "gender": "M",
+      "date_of_birth": "2005-06-06",
+      "phone": "6000-0005",
+      "id_number": "TEST-0006"
+    },
+    {
+      "ref": "patient_007",
+      "name": "Demo Chronic",
+      "gender": "M",
+      "date_of_birth": "1960-02-14",
+      "phone": "6000-0007",
+      "id_number": "TEST-0007"
+    },
+    {
+      "ref": "patient_008",
+      "name": "Demo Multi-Allergy",
+      "gender": "F",
+      "date_of_birth": "1992-11-11",
+      "phone": "6000-0008",
+      "id_number": "TEST-0008"
+    },
+    {
+      "ref": "patient_009",
+      "name": "Incomplete Data Man",
+      "gender": "M",
+      "date_of_birth": "1988-07-07",
+      "phone": "6000-0009",
+      "id_number": "TEST-0009"
+    },
+    {
+      "ref": "patient_010",
+      "name": "Demo Peds",
+      "gender": "M",
+      "date_of_birth": "2018-04-04",
+      "phone": "6000-0010",
+      "id_number": "TEST-0010"
+    },
+    {
+      "ref": "patient_011",
+      "name": "Demo Senior",
+      "gender": "F",
+      "date_of_birth": "1945-09-09",
+      "phone": "6000-0011",
+      "id_number": "TEST-0011"
+    },
+    {
+      "ref": "patient_012",
+      "name": "Referral Needed",
+      "gender": "M",
+      "date_of_birth": "1970-10-10",
+      "phone": "6000-0012",
+      "id_number": "TEST-0012"
+    },
+    {
+      "ref": "patient_013",
+      "name": "Sick Leave Needed",
+      "gender": "F",
+      "date_of_birth": "1998-02-28",
+      "phone": "6000-0013",
+      "id_number": "TEST-0013"
+    },
+    {
+      "ref": "patient_014",
+      "name": "Super Senior",
+      "gender": "M",
+      "date_of_birth": "1935-12-25",
+      "phone": "6000-0014",
+      "id_number": "TEST-0014"
+    },
+    {
+      "ref": "patient_015",
+      "name": "Gastroenteritis Case",
+      "gender": "F",
+      "date_of_birth": "2001-05-05",
+      "phone": "6000-0015",
+      "id_number": "TEST-0015"
+    },
+    {
+      "ref": "patient_016",
+      "name": "Generic Peds 1",
+      "gender": "M",
+      "date_of_birth": "2015-01-10",
+      "phone": "6000-0016",
+      "id_number": "TEST-0016"
+    },
+    {
+      "ref": "patient_017",
+      "name": "Generic Peds 2",
+      "gender": "F",
+      "date_of_birth": "2017-08-20",
+      "phone": "6000-0017",
+      "id_number": "TEST-0017"
+    },
+    {
+      "ref": "patient_018",
+      "name": "Generic Peds 3",
+      "gender": "M",
+      "date_of_birth": "2019-03-15",
+      "phone": "6000-0018",
+      "id_number": "TEST-0018"
+    },
+    {
+      "ref": "patient_019",
+      "name": "Generic Peds 4",
+      "gender": "F",
+      "date_of_birth": "2020-11-30",
+      "phone": "6000-0019",
+      "id_number": "TEST-0019"
+    },
+    {
+      "ref": "patient_020",
+      "name": "Generic Peds 5",
+      "gender": "M",
+      "date_of_birth": "2021-07-22",
+      "phone": "6000-0020",
+      "id_number": "TEST-0020"
+    },
+    {
+      "ref": "patient_021",
+      "name": "Generic Peds 6",
+      "gender": "F",
+      "date_of_birth": "2016-04-18",
+      "phone": "6000-0021",
+      "id_number": "TEST-0021"
+    },
+    {
+      "ref": "patient_022",
+      "name": "Generic Peds 7",
+      "gender": "M",
+      "date_of_birth": "2014-09-05",
+      "phone": "6000-0022",
+      "id_number": "TEST-0022"
+    },
+    {
+      "ref": "patient_023",
+      "name": "Generic Youth 1",
+      "gender": "F",
+      "date_of_birth": "2002-02-11",
+      "phone": "6000-0023",
+      "id_number": "TEST-0023"
+    },
+    {
+      "ref": "patient_024",
+      "name": "Generic Youth 2",
+      "gender": "M",
+      "date_of_birth": "1999-10-25",
+      "phone": "6000-0024",
+      "id_number": "TEST-0024"
+    },
+    {
+      "ref": "patient_025",
+      "name": "Generic Youth 3",
+      "gender": "F",
+      "date_of_birth": "1997-06-14",
+      "phone": "6000-0025",
+      "id_number": "TEST-0025"
+    },
+    {
+      "ref": "patient_026",
+      "name": "Generic Youth 4",
+      "gender": "M",
+      "date_of_birth": "1996-03-08",
+      "phone": "6000-0026",
+      "id_number": "TEST-0026"
+    },
+    {
+      "ref": "patient_027",
+      "name": "Generic Youth 5",
+      "gender": "F",
+      "date_of_birth": "1995-12-02",
+      "phone": "6000-0027",
+      "id_number": "TEST-0027"
+    },
+    {
+      "ref": "patient_028",
+      "name": "Generic Youth 6",
+      "gender": "M",
+      "date_of_birth": "2000-08-19",
+      "phone": "6000-0028",
+      "id_number": "TEST-0028"
+    },
+    {
+      "ref": "patient_029",
+      "name": "Generic Youth 7",
+      "gender": "F",
+      "date_of_birth": "1994-05-27",
+      "phone": "6000-0029",
+      "id_number": "TEST-0029"
+    },
+    {
+      "ref": "patient_030",
+      "name": "Generic Youth 8",
+      "gender": "M",
+      "date_of_birth": "1998-01-16",
+      "phone": "6000-0030",
+      "id_number": "TEST-0030"
+    },
+    {
+      "ref": "patient_031",
+      "name": "Generic Youth 9",
+      "gender": "F",
+      "date_of_birth": "1993-09-03",
+      "phone": "6000-0031",
+      "id_number": "TEST-0031"
+    },
+    {
+      "ref": "patient_032",
+      "name": "Generic Youth 10",
+      "gender": "M",
+      "date_of_birth": "1995-07-21",
+      "phone": "6000-0032",
+      "id_number": "TEST-0032"
+    },
+    {
+      "ref": "patient_033",
+      "name": "Generic Mid 1",
+      "gender": "F",
+      "date_of_birth": "1988-04-12",
+      "phone": "6000-0033",
+      "id_number": "TEST-0033"
+    },
+    {
+      "ref": "patient_034",
+      "name": "Generic Mid 2",
+      "gender": "M",
+      "date_of_birth": "1985-11-28",
+      "phone": "6000-0034",
+      "id_number": "TEST-0034"
+    },
+    {
+      "ref": "patient_035",
+      "name": "Generic Mid 3",
+      "gender": "F",
+      "date_of_birth": "1982-06-05",
+      "phone": "6000-0035",
+      "id_number": "TEST-0035"
+    },
+    {
+      "ref": "patient_036",
+      "name": "Generic Mid 4",
+      "gender": "M",
+      "date_of_birth": "1980-02-19",
+      "phone": "6000-0036",
+      "id_number": "TEST-0036"
+    },
+    {
+      "ref": "patient_037",
+      "name": "Generic Mid 5",
+      "gender": "F",
+      "date_of_birth": "1978-09-08",
+      "phone": "6000-0037",
+      "id_number": "TEST-0037"
+    },
+    {
+      "ref": "patient_038",
+      "name": "Generic Mid 6",
+      "gender": "M",
+      "date_of_birth": "1975-12-30",
+      "phone": "6000-0038",
+      "id_number": "TEST-0038"
+    },
+    {
+      "ref": "patient_039",
+      "name": "Generic Mid 7",
+      "gender": "F",
+      "date_of_birth": "1973-05-14",
+      "phone": "6000-0039",
+      "id_number": "TEST-0039"
+    },
+    {
+      "ref": "patient_040",
+      "name": "Generic Mid 8",
+      "gender": "M",
+      "date_of_birth": "1989-08-02",
+      "phone": "6000-0040",
+      "id_number": "TEST-0040"
+    },
+    {
+      "ref": "patient_041",
+      "name": "Generic Mid 9",
+      "gender": "F",
+      "date_of_birth": "1986-01-24",
+      "phone": "6000-0041",
+      "id_number": "TEST-0041"
+    },
+    {
+      "ref": "patient_042",
+      "name": "Generic Mid 10",
+      "gender": "M",
+      "date_of_birth": "1983-10-11",
+      "phone": "6000-0042",
+      "id_number": "TEST-0042"
+    },
+    {
+      "ref": "patient_043",
+      "name": "Generic Mid 11",
+      "gender": "F",
+      "date_of_birth": "1979-07-06",
+      "phone": "6000-0043",
+      "id_number": "TEST-0043"
+    },
+    {
+      "ref": "patient_044",
+      "name": "Generic Mid 12",
+      "gender": "M",
+      "date_of_birth": "1976-03-29",
+      "phone": "6000-0044",
+      "id_number": "TEST-0044"
+    },
+    {
+      "ref": "patient_045",
+      "name": "Generic Senior 1",
+      "gender": "F",
+      "date_of_birth": "1968-11-17",
+      "phone": "6000-0045",
+      "id_number": "TEST-0045"
+    },
+    {
+      "ref": "patient_046",
+      "name": "Generic Senior 2",
+      "gender": "M",
+      "date_of_birth": "1965-06-23",
+      "phone": "6000-0046",
+      "id_number": "TEST-0046"
+    },
+    {
+      "ref": "patient_047",
+      "name": "Generic Senior 3",
+      "gender": "F",
+      "date_of_birth": "1962-02-09",
+      "phone": "6000-0047",
+      "id_number": "TEST-0047"
+    },
+    {
+      "ref": "patient_048",
+      "name": "Generic Senior 4",
+      "gender": "M",
+      "date_of_birth": "1959-09-14",
+      "phone": "6000-0048",
+      "id_number": "TEST-0048"
+    },
+    {
+      "ref": "patient_049",
+      "name": "Generic Senior 5",
+      "gender": "F",
+      "date_of_birth": "1956-04-01",
+      "phone": "6000-0049",
+      "id_number": "TEST-0049"
+    },
+    {
+      "ref": "patient_050",
+      "name": "Generic Senior 6",
+      "gender": "M",
+      "date_of_birth": "1953-12-08",
+      "phone": "6000-0050",
+      "id_number": "TEST-0050"
+    },
+    {
+      "ref": "patient_051",
+      "name": "Generic Senior 7",
+      "gender": "F",
+      "date_of_birth": "1950-07-26",
+      "phone": "6000-0051",
+      "id_number": "TEST-0051"
+    },
+    {
+      "ref": "patient_052",
+      "name": "Generic Senior 8",
+      "gender": "M",
+      "date_of_birth": "1969-03-05",
+      "phone": "6000-0052",
+      "id_number": "TEST-0052"
+    },
+    {
+      "ref": "patient_053",
+      "name": "Generic Senior 9",
+      "gender": "F",
+      "date_of_birth": "1966-10-18",
+      "phone": "6000-0053",
+      "id_number": "TEST-0053"
+    },
+    {
+      "ref": "patient_054",
+      "name": "Generic Senior 10",
+      "gender": "M",
+      "date_of_birth": "1963-05-22",
+      "phone": "6000-0054",
+      "id_number": "TEST-0054"
+    },
+    {
+      "ref": "patient_055",
+      "name": "Generic Senior 11",
+      "gender": "F",
+      "date_of_birth": "1960-12-07",
+      "phone": "6000-0055",
+      "id_number": "TEST-0055"
+    },
+    {
+      "ref": "patient_056",
+      "name": "Generic Super Senior 1",
+      "gender": "M",
+      "date_of_birth": "1942-08-30",
+      "phone": "6000-0056",
+      "id_number": "TEST-0056"
+    },
+    {
+      "ref": "patient_057",
+      "name": "Generic Super Senior 2",
+      "gender": "F",
+      "date_of_birth": "1939-01-13",
+      "phone": "6000-0057",
+      "id_number": "TEST-0057"
+    },
+    {
+      "ref": "patient_058",
+      "name": "Generic Super Senior 3",
+      "gender": "M",
+      "date_of_birth": "1936-06-29",
+      "phone": "6000-0058",
+      "id_number": "TEST-0058"
+    },
+    {
+      "ref": "patient_059",
+      "name": "Generic Super Senior 4",
+      "gender": "F",
+      "date_of_birth": "1933-11-04",
+      "phone": "6000-0059",
+      "id_number": "TEST-0059"
+    },
+    {
+      "ref": "patient_060",
+      "name": "Generic Super Senior 5",
+      "gender": "M",
+      "date_of_birth": "1930-03-21",
+      "phone": "6000-0060",
+      "id_number": "TEST-0060"
+    }
+  ],
+  "drugs": [
+    {
+      "ref": "drug_para_500",
+      "code": "PARA_500",
+      "name": "Panadol",
+      "unit": "tab",
+      "unit_price": "2.00"
+    },
+    {
+      "ref": "drug_ibu_400",
+      "code": "IBU_400",
+      "name": "Brufen",
+      "unit": "tab",
+      "unit_price": "3.00"
+    },
+    {
+      "ref": "drug_amox_500",
+      "code": "AMOX_500",
+      "name": "Amoxil",
+      "unit": "cap",
+      "unit_price": "4.00"
+    },
+    {
+      "ref": "drug_cetirizine_10",
+      "code": "CETIRIZINE_10",
+      "name": "Zyrtec",
+      "unit": "tab",
+      "unit_price": "5.00"
+    },
+    {
+      "ref": "drug_omeprazole_20",
+      "code": "OMEPRAZOLE_20",
+      "name": "Losec",
+      "unit": "cap",
+      "unit_price": "6.00"
+    },
+    {
+      "ref": "drug_hydrocortisone_1",
+      "code": "HYDROCORTISONE_1",
+      "name": "H-Cort",
+      "unit": "tube",
+      "unit_price": "45.00"
+    },
+    {
+      "ref": "drug_cough_syrup",
+      "code": "COUGH_SYRUP",
+      "name": "Coughlin",
+      "unit": "bottle",
+      "unit_price": "60.00"
+    },
+    {
+      "ref": "drug_amlodipine_5",
+      "code": "AMLODIPINE_5",
+      "name": "Norvasc",
+      "unit": "tab",
+      "unit_price": "4.00"
+    },
+    {
+      "ref": "drug_metformin_500",
+      "code": "METFORMIN_500",
+      "name": "Glucophage",
+      "unit": "tab",
+      "unit_price": "2.00"
+    },
+    {
+      "ref": "drug_ors_sachet",
+      "code": "ORS_SACHET",
+      "name": "Hydralyte",
+      "unit": "sachet",
+      "unit_price": "5.00"
+    },
+    {
+      "ref": "drug_loratadine_10",
+      "code": "LORATADINE_10",
+      "name": "Claritin",
+      "unit": "tab",
+      "unit_price": "4.00"
+    },
+    {
+      "ref": "drug_chlorpheniramine_4",
+      "code": "CHLORPHENIRAMINE_4",
+      "name": "Piriton",
+      "unit": "tab",
+      "unit_price": "1.00"
+    },
+    {
+      "ref": "drug_famotidine_20",
+      "code": "FAMOTIDINE_20",
+      "name": "Pepcid",
+      "unit": "tab",
+      "unit_price": "3.00"
+    },
+    {
+      "ref": "drug_antacid_liquid",
+      "code": "ANTACID_LIQUID",
+      "name": "Gaviscon",
+      "unit": "bottle",
+      "unit_price": "45.00"
+    },
+    {
+      "ref": "drug_ambroxol_30",
+      "code": "AMBROXOL_30",
+      "name": "Mucosolvan",
+      "unit": "tab",
+      "unit_price": "2.00"
+    },
+    {
+      "ref": "drug_guaifenesin_syrup",
+      "code": "GUAIFENESIN_SYRUP",
+      "name": "Robitussin",
+      "unit": "bottle",
+      "unit_price": "50.00"
+    },
+    {
+      "ref": "drug_saline_spray",
+      "code": "SALINE_SPRAY",
+      "name": "Sterimar",
+      "unit": "bottle",
+      "unit_price": "80.00"
+    },
+    {
+      "ref": "drug_fluticasone_spray",
+      "code": "FLUTICASONE_SPRAY",
+      "name": "Flixonase",
+      "unit": "bottle",
+      "unit_price": "120.00"
+    },
+    {
+      "ref": "drug_azithromycin_250",
+      "code": "AZITHROMYCIN_250",
+      "name": "Zithromax",
+      "unit": "cap",
+      "unit_price": "15.00"
+    },
+    {
+      "ref": "drug_cephalexin_250",
+      "code": "CEPHALEXIN_250",
+      "name": "Keflex",
+      "unit": "cap",
+      "unit_price": "3.00"
+    },
+    {
+      "ref": "drug_mupirocin_2",
+      "code": "MUPIROCIN_2",
+      "name": "Bactroban",
+      "unit": "tube",
+      "unit_price": "60.00"
+    },
+    {
+      "ref": "drug_antifungal_cream",
+      "code": "ANTIFUNGAL_CREAM",
+      "name": "Canesten",
+      "unit": "tube",
+      "unit_price": "55.00"
+    },
+    {
+      "ref": "drug_artificial_tears",
+      "code": "ARTIFICIAL_TEARS",
+      "name": "Tears Naturale",
+      "unit": "bottle",
+      "unit_price": "40.00"
+    },
+    {
+      "ref": "drug_antihistamine_drops",
+      "code": "ANTIHISTAMINE_DROPS",
+      "name": "Patanol",
+      "unit": "bottle",
+      "unit_price": "90.00"
+    },
+    {
+      "ref": "drug_loperamide_2",
+      "code": "LOPERAMIDE_2",
+      "name": "Imodium",
+      "unit": "cap",
+      "unit_price": "4.00"
+    },
+    {
+      "ref": "drug_probiotic_sachet",
+      "code": "PROBIOTIC_SACHET",
+      "name": "Bioflor",
+      "unit": "sachet",
+      "unit_price": "10.00"
+    },
+    {
+      "ref": "drug_atorvastatin_20",
+      "code": "ATORVASTATIN_20",
+      "name": "Lipitor",
+      "unit": "tab",
+      "unit_price": "8.00"
+    },
+    {
+      "ref": "drug_losartan_50",
+      "code": "LOSARTAN_50",
+      "name": "Cozaar",
+      "unit": "tab",
+      "unit_price": "6.00"
+    },
+    {
+      "ref": "drug_vit_c_500",
+      "code": "VIT_C_500",
+      "name": "Redoxon",
+      "unit": "tab",
+      "unit_price": "1.00"
+    },
+    {
+      "ref": "drug_wound_pack",
+      "code": "WOUND_PACK",
+      "name": "Generic Pack",
+      "unit": "pack",
+      "unit_price": "20.00"
+    }
+  ],
+  "drug_batches": [
+    {
+      "ref": "batch_amox_01",
+      "drug_ref": "drug_amox_500",
+      "batch_no": "AMX-2026-001",
+      "expiry_date": "2026-06-01",
+      "quantity_received": 100,
+      "quantity_remaining": 20,
+      "cost_per_unit": "1.50",
+      "received_date": "2025-01-01"
+    },
+    {
+      "ref": "batch_amox_02",
+      "drug_ref": "drug_amox_500",
+      "batch_no": "AMX-2026-002",
+      "expiry_date": "2027-12-01",
+      "quantity_received": 500,
+      "quantity_remaining": 500,
+      "cost_per_unit": "1.60",
+      "received_date": "2026-01-01"
+    },
+    {
+      "ref": "batch_para_01",
+      "drug_ref": "drug_para_500",
+      "batch_no": "PAR-LOW-01",
+      "expiry_date": "2028-01-01",
+      "quantity_received": 1000,
+      "quantity_remaining": 10,
+      "cost_per_unit": "0.50",
+      "received_date": "2026-02-01"
+    },
+    {
+      "ref": "batch_ibu_01",
+      "drug_ref": "drug_ibu_400",
+      "batch_no": "IBU-EXP-01",
+      "expiry_date": "2026-05-15",
+      "quantity_received": 500,
+      "quantity_remaining": 100,
+      "cost_per_unit": "0.80",
+      "received_date": "2024-05-01"
+    }
+  ],
+  "visits": [
+    {
+      "ref": "visit_001",
+      "patient_ref": "patient_001",
+      "visit_date": "2026-05-01T10:00:00+00:00",
+      "chief_complaint": "Sore throat and fever",
+      "diagnosis": "Tonsillitis",
+      "status": "draft"
+    },
+    {
+      "ref": "visit_002",
+      "patient_ref": "patient_003",
+      "visit_date": "2026-05-02T11:00:00+00:00",
+      "chief_complaint": "Cough",
+      "diagnosis": "URTI",
+      "status": "completed"
+    },
+    {
+      "ref": "visit_003",
+      "patient_ref": "patient_002",
+      "visit_date": "2026-05-02T14:00:00+00:00",
+      "chief_complaint": "Muscle pain",
+      "diagnosis": "Back pain",
+      "status": "voided"
+    },
+    {
+      "ref": "visit_004",
+      "patient_ref": "patient_013",
+      "visit_date": "2026-05-03T09:00:00+00:00",
+      "chief_complaint": "Fever",
+      "diagnosis": "Viral fever",
+      "status": "completed"
+    },
+    {
+      "ref": "visit_005",
+      "patient_ref": "patient_007",
+      "visit_date": "2026-05-03T10:30:00+00:00",
+      "chief_complaint": "Headache",
+      "diagnosis": "Tension headache",
+      "status": "draft"
+    }
+  ],
+  "prescription_items": [
+    {
+      "ref": "rx_001",
+      "visit_ref": "visit_001",
+      "drug_ref": "drug_amox_500",
+      "usage_text": "Take 1 cap TDS",
+      "daily_dose": "3",
+      "days": 5,
+      "total_quantity": 15,
+      "unit_price_at_time": "4.00",
+      "total_price": "60.00"
+    },
+    {
+      "ref": "rx_002",
+      "visit_ref": "visit_002",
+      "drug_ref": "drug_amox_500",
+      "usage_text": "Take 1 cap TDS",
+      "daily_dose": "25",
+      "days": 1,
+      "total_quantity": 25,
+      "unit_price_at_time": "4.00",
+      "total_price": "100.00"
+    },
+    {
+      "ref": "rx_003",
+      "visit_ref": "visit_003",
+      "drug_ref": "drug_para_500",
+      "usage_text": "Take 2 tabs QID PRN",
+      "daily_dose": "8",
+      "days": 3,
+      "total_quantity": 24,
+      "unit_price_at_time": "2.00",
+      "total_price": "48.00"
+    },
+    {
+      "ref": "rx_004",
+      "visit_ref": "visit_004",
+      "drug_ref": "drug_para_500",
+      "usage_text": "Take 1 tab QID",
+      "daily_dose": "4",
+      "days": 2,
+      "total_quantity": 8,
+      "unit_price_at_time": "2.00",
+      "total_price": "16.00"
+    },
+    {
+      "ref": "rx_005",
+      "visit_ref": "visit_005",
+      "drug_ref": "drug_para_500",
+      "usage_text": "Take 1 tab QID",
+      "daily_dose": "4",
+      "days": 5,
+      "total_quantity": 20,
+      "unit_price_at_time": "2.00",
+      "total_price": "40.00"
+    }
+  ],
+  "invoices": [
+    {
+      "ref": "inv_001",
+      "visit_ref": "visit_001",
+      "invoice_no": "DEMO-INV-0001",
+      "consultation_fee": "200.00",
+      "medication_fee": "60.00",
+      "other_fee": "0.00",
+      "total_amount": "260.00",
+      "status": "draft"
+    },
+    {
+      "ref": "inv_002",
+      "visit_ref": "visit_002",
+      "invoice_no": "DEMO-INV-0002",
+      "consultation_fee": "200.00",
+      "medication_fee": "100.00",
+      "other_fee": "-50.00",
+      "total_amount": "250.00",
+      "status": "issued"
+    },
+    {
+      "ref": "inv_003",
+      "visit_ref": "visit_003",
+      "invoice_no": "DEMO-INV-0003",
+      "consultation_fee": "200.00",
+      "medication_fee": "48.00",
+      "other_fee": "0.00",
+      "total_amount": "248.00",
+      "status": "voided",
+      "void_reason": "Patient cancelled"
+    },
+    {
+      "ref": "inv_004",
+      "visit_ref": "visit_004",
+      "invoice_no": "DEMO-INV-0004",
+      "consultation_fee": "200.00",
+      "medication_fee": "16.00",
+      "other_fee": "50.00",
+      "total_amount": "266.00",
+      "status": "issued"
+    }
+  ],
+  "stock_movements": [
+    {
+      "ref": "mov_001",
+      "batch_ref": "batch_amox_01",
+      "movement_type": "dispense",
+      "quantity_change": -20,
+      "note": "FEFO auto dispense",
+      "related_prescription_item_ref": "rx_002",
+      "related_invoice_ref": "inv_002"
+    },
+    {
+      "ref": "mov_002",
+      "batch_ref": "batch_amox_02",
+      "movement_type": "dispense",
+      "quantity_change": -5,
+      "note": "FEFO auto dispense",
+      "related_prescription_item_ref": "rx_002",
+      "related_invoice_ref": "inv_002"
+    },
+    {
+      "ref": "mov_003",
+      "batch_ref": "batch_para_01",
+      "movement_type": "dispense",
+      "quantity_change": -24,
+      "note": "Dispense",
+      "related_prescription_item_ref": "rx_003",
+      "related_invoice_ref": "inv_003"
+    },
+    {
+      "ref": "mov_004",
+      "batch_ref": "batch_para_01",
+      "movement_type": "void_reverse",
+      "quantity_change": 24,
+      "note": "Invoice voided",
+      "related_prescription_item_ref": "rx_003",
+      "related_invoice_ref": "inv_003"
+    }
+  ]
+}
