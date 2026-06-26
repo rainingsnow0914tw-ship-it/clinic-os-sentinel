@@ -12,6 +12,8 @@ import AIDraftsPage from '@/pages/AIDraftsPage';
 import AgentTasksPage from '@/pages/AgentTasksPage';
 import ReportsPage from '@/pages/ReportsPage';
 import SettingsPage from '@/pages/SettingsPage';
+import SentinelPatientsPage from '@/pages/SentinelPatients';
+import SentinelPatientDetailPage from '@/pages/SentinelPatients/PatientDetail';
 import AppShell from '@/components/AppShell';
 
 /**
@@ -40,8 +42,8 @@ import AppShell from '@/components/AppShell';
 function App() {
   return (
     <Routes>
-      {/* 預設導向 dashboard（Sprint 1 會改成檢查登入狀態再決定） */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      {/* hackathon demo: 開頁直接進 Sentinel 病人搜尋 */}
+      <Route path="/" element={<Navigate to="/sentinel/patients" replace />} />
 
       {/* 公開頁 */}
       <Route path="/login" element={<LoginPage />} />
@@ -61,10 +63,14 @@ function App() {
         <Route path="/agent-tasks" element={<AgentTasksPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/settings/*" element={<SettingsPage />} />
+
+        {/* Sentinel demo (hackathon 主秀) */}
+        <Route path="/sentinel/patients" element={<SentinelPatientsPage />} />
+        <Route path="/sentinel/patients/:patientId" element={<SentinelPatientDetailPage />} />
       </Route>
 
-      {/* 找不到路由 → 回 dashboard */}
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      {/* 找不到路由 → 回 sentinel 搜尋 */}
+      <Route path="*" element={<Navigate to="/sentinel/patients" replace />} />
     </Routes>
   );
 }

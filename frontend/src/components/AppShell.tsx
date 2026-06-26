@@ -8,8 +8,9 @@ import { NavLink, Outlet } from 'react-router-dom';
  */
 
 const NAV_ITEMS = [
+  { to: '/sentinel/patients', label: '🛡️ 哨兵病人搜尋' },
   { to: '/dashboard', label: '🏠 首頁' },
-  { to: '/patients', label: '👤 病人' },
+  { to: '/patients', label: '👤 病人 (jimmy stub)' },
   { to: '/drugs', label: '💊 藥品主檔' },
   { to: '/inventory', label: '📦 庫存' },
   { to: '/invoices', label: '🧾 收據' },

@@ -12,6 +12,7 @@ from app.routes.ai import router as ai_router
 from app.routes.agent_tasks import router as agent_tasks_router
 from app.routes.reports import router as reports_router
 from app.routes.sentinel import router as sentinel_router
+from app.routes.sentinel_patients import router as sentinel_patients_router
 
 __all__ = [
     "auth_router",
@@ -25,4 +26,5 @@ __all__ = [
     "agent_tasks_router",
     "reports_router",
     "sentinel_router",
+    "sentinel_patients_router",
 ]
