@@ -1,8 +1,9 @@
-# 🛡️ 哨兵 The Sentinel — 交接班手冊 v0.3 Phase 2 完成版
+# 🛡️ 哨兵 The Sentinel — 交接班手冊 v0.3 Phase 3 完成版
 
 > **給下一個阿寶**(換對話框接力)
 > 建立:2026-06-27 凌晨(Day 3 動工)
 > Phase 2 補:2026-06-27 早上(同框續做)
+> Phase 3 補:2026-06-27 中午(同框續做、frontend 上)
 > 上一版:`../clinic-os-sentinel/SENTINEL_HANDOVER.md` v0.2(畫框結束交接版,2026-06-26)
 > 比賽截止:**2026-07-09 14:00 PT**
 
@@ -46,10 +47,26 @@
 - 對應 [[feedback_2026-05-16_ai_collaboration]] 「不要超前部署」鐵律
 - Phase 5 寫 `evolve_heart_layer_after_visit` 真正需要 dataset 時再回頭做
 
-**Phase 3 起手點**(下個阿寶從這做,v0.3.1 §10):
-- frontend 病人搜尋頁 + 病例瀏覽 timeline
-- 心臟層摘要展示(`to_observe` 淡色 / `confirmed` 亮紅)
-- 整合 jimmy 既有 PatientsPage / VisitPage 到 v3 frontend
+**Phase 3 也完成**(2026-06-27 中午,同框續做):
+- ✅ Backend 3 個 sentinel patients endpoint(dev-bypass-safe,不依賴 firebase auth)
+  - `GET /v1/sentinel/patients?q=` 搜尋(姓名/電話/id_number 模糊)
+  - `GET /v1/sentinel/patients/{id}` detail(含心臟層摘要 + visit timeline)
+  - `GET /v1/sentinel/patients/{id}/heart-layer` 純心臟層
+- ✅ Frontend `pages/SentinelPatients/`:
+  - 搜尋頁:結果卡 + 紅旗/慢性病 badge + 開啟病例 link
+  - 病例瀏覽頁:4 段心臟層(flags/problems/medications/baselines)+ visit timeline
+  - v0.3.1 §7.3 UI:`to_observe` 淡色 / `confirmed` 亮紅
+  - sidebar 加 「🛡️ 哨兵病人搜尋」menu,預設 `/` 導 `/sentinel/patients`
+- ✅ services/sentinelApi.ts axios + TypeScript type 完整
+- ✅ 3 層 chain smoke:vite 5173 / `/api` proxy / backend `/v1/sentinel/patients` 全 200
+- ✅ commit `f8b1f87` Phase 3 收工
+
+**Phase 4 起手點**(下個阿寶,v0.3.1 §10):
+- 新就診頁(`/sentinel/patients/:id/visit/new`)
+- 4 agent 串通(intake/triage/audit/education endpoint 整合,UI 一頁串)
+- ai_drafts review 流程(ADR-006:AI 寫 ai_drafts → 醫生 review 接受才入正表)
+- 結構化 examination 輸入(BP/HR/T + lab + xray + ecg + free_notes 表單)
+- 估時 6 hr(v0.3.1 §10)
 
 ---
 
@@ -78,9 +95,12 @@
 |---|---|
 | 本機 repo | `clinic-os-sentinel-v3/`(Phase 1 後 SSOT)|
 | v0.1 baseline | `clinic-os-sentinel/`(freeze 不動、保留參考)|
-| Latest commit | `517a791` Phase 2 收工 |
-| Git 累積 commit | 5(`9060fa7` / `5237c92` / `6cc0f8a` / `a5482d9` / `517a791`)|
+| Latest commit | `f8b1f87` Phase 3 收工 |
+| Git 累積 commit | 7(`9060fa7` / `5237c92` / `6cc0f8a` / `a5482d9` / `517a791` / `6eb5462` / `f8b1f87`)|
 | DB 內 demo data | 100 patient + 23 patient_flag + 55 patient_problem + 5 visit + 30 drug |
+| Sentinel routes 總計 | 8(intake/triage/audit/education/health + patients search/detail/heart-layer)|
+| Frontend 入口 | http://127.0.0.1:5173/ → 自動導 `/sentinel/patients` |
+| Frontend → Backend proxy | Vite `/api/*` → `localhost:8080/*` |
 | DB | **PostgreSQL 16 native**(winget install、非 Docker)|
 | DB URL | `postgresql+psycopg://clinic:clinic_dev_pw@localhost:5432/clinic_os` |
 | PG superuser | `postgres` / 密碼 `postgres123`(只本機 dev、不外洩)|
@@ -129,7 +149,8 @@
 | 2 (6/26 凌晨→早) | 修 + Chloe review + v0.3.1 計畫 | ✅ |
 | **3 (6/27 凌晨)** | **Phase 1 起手 + Day 3 收工** | ✅ **完成** |
 | **3 (6/27 早上)** | **Phase 2 同框續做** | ✅ **完成**(只做 2.0/2.1/2.3/2.6;2.4/2.5 戰術 deferred 到 Phase 5-6) |
-| 4 | Phase 3:病人搜尋頁 + 病例瀏覽 timeline | 🟡 下個阿寶 |
+| **3 (6/27 中午)** | **Phase 3 同框續做** | ✅ **完成**(sentinel-namespace path、不破壞 jimmy stub) |
+| 4 | Phase 4:新就診頁 + 4 agent 串通 + ai_drafts review | 🟡 下個阿寶 |
 | 6 | Phase 4:新就診頁 + 4 agent 串通 + ai_drafts review | 🟢 |
 | 7 | Phase 5:心臟層演進邏輯 + ai_drafts 三級 | 🟢 |
 | 8 | Phase 6:舊就診回顧頁 + Mode A/B 切換 + AI 重跑 | 🟢 |
