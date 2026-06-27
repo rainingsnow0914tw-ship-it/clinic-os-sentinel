@@ -1,9 +1,10 @@
-# 🛡️ 哨兵 The Sentinel — 交接班手冊 v0.3 Phase 3 完成版
+# 🛡️ 哨兵 The Sentinel — 交接班手冊 v0.3 Phase 4.1 完成版
 
 > **給下一個阿寶**(換對話框接力)
 > 建立:2026-06-27 凌晨(Day 3 動工)
 > Phase 2 補:2026-06-27 早上(同框續做)
 > Phase 3 補:2026-06-27 中午(同框續做、frontend 上)
+> Phase 2.4c/d/e + 4.1 補:2026-06-27 晚上(司機指完整真實病歷 + 4 段心臟層完整化 + 新就診頁 form)
 > 上一版:`../clinic-os-sentinel/SENTINEL_HANDOVER.md` v0.2(畫框結束交接版,2026-06-26)
 > 比賽截止:**2026-07-09 14:00 PT**
 
@@ -61,12 +62,24 @@
 - ✅ 3 層 chain smoke:vite 5173 / `/api` proxy / backend `/v1/sentinel/patients` 全 200
 - ✅ commit `f8b1f87` Phase 3 收工
 
-**Phase 4 起手點**(下個阿寶,v0.3.1 §10):
-- 新就診頁(`/sentinel/patients/:id/visit/new`)
-- 4 agent 串通(intake/triage/audit/education endpoint 整合,UI 一頁串)
-- ai_drafts review 流程(ADR-006:AI 寫 ai_drafts → 醫生 review 接受才入正表)
-- 結構化 examination 輸入(BP/HR/T + lab + xray + ecg + free_notes 表單)
-- 估時 6 hr(v0.3.1 §10)
+**Phase 2.4c/d/e 也完成**(2026-06-27 晚上,司機示範真實診所手寫病歷 + 反饋空白問題後補):
+- ✅ 2.4c alembic 0004 + visit.hpi + visit.physical_exam 欄位 + extend_visits 4-tuple (CC/HPI/PE/Dx) 重寫 80+ chronic-aware cases
+- ✅ 2.4d 接 prescriptions 進 sentinel detail (177 rx + 302 items, chronic-aware drug pool mapping)
+- ✅ 2.4e 補 medications + baselines (56 med + 400 baseline, 心臟層 4 段完整化)
+- ✅ frontend 渲染 CC/HPI/PE/IMP + vital signs chip + lab list + Rx 處方列 + 心臟層 4 段全 render
+- ✅ commit `7c9d915` (2.4c+d) + `b2d702a` (2.4e+4.1)
+
+**Phase 4.1 新就診頁也完成**:
+- ✅ backend POST /v1/sentinel/patients/:id/visits 建 visit + (帶 vital 才建) VisitExamination
+- ✅ frontend /sentinel/patients/:id/visit/new SOAP form (CC 必填 + HPI/PE/Dx textarea + vital signs 5 欄)
+- ✅ 心臟層 quick-ref banner (紅旗/慢性病/長期用藥) 給醫師寫病歷時參考
+- ✅ source='manual' is_demo_data=False (區隔 demo data)
+
+**Phase 4.2 起手點**(下個阿寶,v0.3.1 §10):
+- 4 agent 串通(NewVisitPage submit 時觸發 intake/triage/audit/education 4 個 endpoint)
+- ai_drafts review 流程(ADR-006:新建 ai_drafts table、AI 寫 ai_drafts → 醫生 review 接受才入正表)
+  - 需要 alembic 0005 + ai_drafts model + create/list/accept endpoint
+- 估時 3-4 hr(v0.3.1 §10 剩餘部分)
 
 ---
 
@@ -95,12 +108,13 @@
 |---|---|
 | 本機 repo | `clinic-os-sentinel-v3/`(Phase 1 後 SSOT)|
 | v0.1 baseline | `clinic-os-sentinel/`(freeze 不動、保留參考)|
-| Latest commit | `f8b1f87` Phase 3 收工 |
-| Git 累積 commit | 7(`9060fa7` / `5237c92` / `6cc0f8a` / `a5482d9` / `517a791` / `6eb5462` / `f8b1f87`)|
-| DB 內 demo data | 100 patient + 23 patient_flag + 55 patient_problem + 5 visit + 30 drug |
-| Sentinel routes 總計 | 8(intake/triage/audit/education/health + patients search/detail/heart-layer)|
+| Latest commit | `b2d702a` Phase 2.4e + 4.1 收工 |
+| Git 累積 commit | 12 (`9060fa7` baseline / `5237c92` 哨兵層+3 schema / `6cc0f8a` alembic ASCII / `a5482d9` v0.3.P1 handover / `517a791` heart layer+100 patient / `6eb5462` v0.3.P2 handover / `f8b1f87` Phase 3 / `e3491f1` v0.3.P3 handover / `21b7b3b` 補 visit examination / `0417a5c` CC 症狀格式 / `1678790` CC↔Dx 配對 / `7c9d915` HPI/PE/Rx / `b2d702a` med/baseline + 新就診)|
+| DB 內 demo data | 100 patient + 23 flag + 55 problem + **56 medication** + **400 baseline** + **169 visit** + **169 examination** + **177 prescription + 302 items** + 30 drug |
+| Sentinel routes 總計 | 9 (intake/triage/audit/education/health + patients search/detail/heart-layer + **POST patients/:id/visits**)|
 | Frontend 入口 | http://127.0.0.1:5173/ → 自動導 `/sentinel/patients` |
-| Frontend → Backend proxy | Vite `/api/*` → `localhost:8080/*` |
+| Frontend → Backend proxy | Vite `/api/*` → `localhost:8081/*`(**8080 zombie 已換 8081**)|
+| Backend port | **8081** (Windows 8080 zombie socket 卡住、port 不釋放)|
 | DB | **PostgreSQL 16 native**(winget install、非 Docker)|
 | DB URL | `postgresql+psycopg://clinic:clinic_dev_pw@localhost:5432/clinic_os` |
 | PG superuser | `postgres` / 密碼 `postgres123`(只本機 dev、不外洩)|
@@ -150,8 +164,8 @@
 | **3 (6/27 凌晨)** | **Phase 1 起手 + Day 3 收工** | ✅ **完成** |
 | **3 (6/27 早上)** | **Phase 2 同框續做** | ✅ **完成**(只做 2.0/2.1/2.3/2.6;2.4/2.5 戰術 deferred 到 Phase 5-6) |
 | **3 (6/27 中午)** | **Phase 3 同框續做** | ✅ **完成**(sentinel-namespace path、不破壞 jimmy stub) |
-| 4 | Phase 4:新就診頁 + 4 agent 串通 + ai_drafts review | 🟡 下個阿寶 |
-| 6 | Phase 4:新就診頁 + 4 agent 串通 + ai_drafts review | 🟢 |
+| **3 (6/27 晚上)** | **Phase 2.4c/d/e + 4.1 同框續做** | ✅ **完成**(HPI/PE + Rx + med/baseline + 新就診頁 form) |
+| 4 | Phase 4.2:4 agent 串通 + ai_drafts review | 🟡 下個阿寶 |
 | 7 | Phase 5:心臟層演進邏輯 + ai_drafts 三級 | 🟢 |
 | 8 | Phase 6:舊就診回顧頁 + Mode A/B 切換 + AI 重跑 | 🟢 |
 | 9 | Phase 7:教育要點 watchlist + 四幕劇 e2e 跑通 | 🟢 |
