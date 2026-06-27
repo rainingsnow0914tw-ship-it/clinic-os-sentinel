@@ -200,14 +200,31 @@ def main() -> int:
                 db.add(flag)
                 flag_count += 1
 
-            # 慢性病 -> patient_problem
+            # 慢性病 -> patient_problem (normalize 英文 jimmy mock -> 中文 canonical, 與 Phase 5 evolve 對齊)
+            from scripts.normalize_chronic_names import CHRONIC_NAME_MAP, ALREADY_CANONICAL_CN
+            seen_in_patient: set[str] = set()
             for condition in parse_list(mp.get("chronic_conditions")):
+                if condition in ALREADY_CANONICAL_CN:
+                    canonical = condition
+                    icd = None
+                else:
+                    mapped = CHRONIC_NAME_MAP.get(condition.lower().strip())
+                    if mapped:
+                        canonical, icd = mapped
+                    else:
+                        # 不在 map 內 -> 保留原 raw (可能是新慢性病), 給 Phase 5 evolve 之後 normalize
+                        canonical = condition
+                        icd = None
+                if canonical in seen_in_patient:
+                    continue   # 同 patient dedup
+                seen_in_patient.add(canonical)
                 prob = PatientProblem(
                     patient_id=patient_uuid,
-                    problem_name=condition,
+                    problem_name=canonical,
+                    icd10_code=icd,
                     control_status=ControlStatus.ACTIVE.value,
                     problem_source=ProblemSource.SELF_REPORT.value,
-                    notes=f"從 jimmy mock chronic_conditions 解析 ({mp.get('patient_ref')})",
+                    notes=f"從 jimmy mock chronic_conditions 解析 ({mp.get('patient_ref')}, raw={condition!r})",
                     **common,
                 )
                 db.add(prob)
