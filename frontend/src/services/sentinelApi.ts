@@ -344,9 +344,11 @@ export async function reviewVisit(
   visitId: string,
   mode: ReviewModeKind
 ): Promise<ReviewResponse> {
+  // Mode A/B 並行跑 4 個 Qwen agent, 平均 30-50s, 給 180s buffer
   const { data } = await apiClient.post<ReviewResponse>(
     `/v1/sentinel/visits/${visitId}/review`,
-    { mode }
+    { mode },
+    { timeout: 180000 }
   );
   return data;
 }
