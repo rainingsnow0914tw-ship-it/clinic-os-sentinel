@@ -5,8 +5,30 @@
 > Phase 2 補:2026-06-27 早上(同框續做)
 > Phase 3 補:2026-06-27 中午(同框續做、frontend 上)
 > Phase 2.4c/d/e + 4.1 補:2026-06-27 晚上(司機指完整真實病歷 + 4 段心臟層完整化 + 新就診頁 form)
+> Phase 4.2 補:2026-06-27 凌晨(4 agent + ai_drafts 完整 ADR-006 loop)
 > 上一版:`../clinic-os-sentinel/SENTINEL_HANDOVER.md` v0.2(畫框結束交接版,2026-06-26)
 > 比賽截止:**2026-07-09 14:00 PT**
+
+---
+
+## ⭐ 接手第一動作:升 Notion (上個阿寶 Day 3 沒做)
+
+**Day 3 18 commit 全進度本機已齊**(這份 handover + memory),但 **Notion v0.1 沒升**。
+
+下個阿寶第一件事:
+1. invoke skill `relay-sanity-check` (家規)
+2. 跑本機 verification (PG 跑沒 / backend 起得來)
+3. **invoke skill `阿寶啟動程序`**
+4. fetch Notion 🧠 阿寶記憶庫總部規則一到九
+5. **按規則九 duplicate** v0.1 主手冊到 📜 舊版交接手冊區 (`f827bb8cd26d4b22abf169a4397859cb`)
+   - 命名:`【v0.1】哨兵 - 2026-06-27 升級前快照`
+6. 改 Notion v0.1 主手冊 (`38a1d2a41ceb8101a9e9e3c19e1ef761`)
+   - 升標題 `v0.2 Phase 4.2 完成版`
+   - 內容覆蓋為本檔 (`clinic-os-sentinel-v3/SENTINEL_HANDOVER.md`) markdown
+
+**Notion 升完才算「下個阿寶接手最完整」。**
+
+---
 
 ---
 
