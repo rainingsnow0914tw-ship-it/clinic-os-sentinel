@@ -13,6 +13,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
+  addWatchlist,
   getPatientDetail,
   PatientDetail,
   reviewVisit,
@@ -413,6 +414,56 @@ function ReviewResultPanel({ result }: { result: ReviewResponse }) {
   const mode = result.mode;
   const modeBadge = mode.mode === 'at_the_time' ? 'Mode A' : 'Mode B';
   const modeColor = mode.mode === 'at_the_time' ? '#1d4ed8' : '#b45309';
+  const [savedLessonId, setSavedLessonId] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveBusy, setSaveBusy] = useState(false);
+
+  // 從 audit findings 萃取 watchlist pattern + lesson
+  function extractLesson(): { pattern: string; lesson: string } | null {
+    const audit: any = result.audit;
+    if (!audit) return null;
+    const rf = audit.rule_engine_findings?.[0];
+    const cr = audit.contextual_risks?.[0];
+    if (!rf && !cr) return null;
+
+    let pattern = '';
+    if (rf?.drug_a && rf?.drug_b) {
+      pattern = `${rf.drug_a} + ${rf.drug_b} interaction`;
+    } else if (cr?.triggered_by) {
+      pattern = cr.triggered_by;
+    } else {
+      pattern = audit.closing_note?.slice(0, 60) || 'AI 教育要點';
+    }
+    const lessonParts: string[] = [];
+    if (rf?.description) lessonParts.push(rf.description);
+    if (cr?.risk) lessonParts.push(`情境風險: ${cr.risk}`);
+    if (audit.closing_note) lessonParts.push(`建議: ${audit.closing_note}`);
+    const lesson = lessonParts.join('\n').slice(0, 1000);
+
+    return pattern && lesson ? { pattern, lesson } : null;
+  }
+
+  async function handleAddWatchlist() {
+    const ext = extractLesson();
+    if (!ext) return;
+    setSaveBusy(true);
+    setSaveError(null);
+    try {
+      const item = await addWatchlist({
+        pattern: ext.pattern,
+        lesson_text: ext.lesson,
+        source_visit_id: result.visit_id,
+        source_mode: mode.mode,
+      });
+      setSavedLessonId(item.id);
+    } catch (e: any) {
+      setSaveError(e?.message ?? '加入失敗');
+    } finally {
+      setSaveBusy(false);
+    }
+  }
+
+  const canSave = mode.mode === 'hindsight' && !!result.audit && !savedLessonId;
   return (
     <div className="review-result">
       <div className="review-mode-header" style={{ borderLeftColor: modeColor }}>
@@ -520,6 +571,26 @@ function ReviewResultPanel({ result }: { result: ReviewResponse }) {
       <div className="review-disclaimer" style={{ borderLeftColor: modeColor }}>
         💡 {result.mode_disclaimer}
       </div>
+
+      {/* Phase 7.2: Mode B 加進醫師 watchlist (AI 反訓練醫生) */}
+      {mode.mode === 'hindsight' && result.audit && (
+        <div className="watchlist-action">
+          {savedLessonId ? (
+            <div className="watchlist-saved">
+              ✅ 已加進你的 watchlist。下次新就診頁頂部會 banner 提醒。
+            </div>
+          ) : (
+            <button
+              className="btn-add-watchlist"
+              disabled={saveBusy || !canSave}
+              onClick={handleAddWatchlist}
+            >
+              📌 把這個教訓加進我的 watchlist
+            </button>
+          )}
+          {saveError && <div className="watchlist-error">⚠️ {saveError}</div>}
+        </div>
+      )}
     </div>
   );
 }

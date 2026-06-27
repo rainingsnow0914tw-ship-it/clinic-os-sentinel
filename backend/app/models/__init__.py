@@ -54,6 +54,9 @@ from app.models.heart_layer_snapshot import HeartLayerSnapshot
 # Phase 4.2c ADR-006
 from app.models.ai_draft import AiDraft, AgentType, AiDraftStatus
 
+# Phase 7.2 AI 反訓練醫生 watchlist
+from app.models.doctor_watchlist import DoctorWatchlist
+
 __all__ = [
     # Base
     "Base",
@@ -104,4 +107,6 @@ __all__ = [
     "AiDraft",
     "AgentType",
     "AiDraftStatus",
+    # Phase 7.2
+    "DoctorWatchlist",
 ]

@@ -350,3 +350,49 @@ export async function reviewVisit(
   );
   return data;
 }
+
+// ─── Phase 7.2 Doctor watchlist (AI 反訓練醫生) ────────────────
+
+export interface WatchlistItem {
+  id: string;
+  doctor_user_id: string;
+  source_visit_id: string | null;
+  source_mode: string;
+  pattern: string;
+  lesson_text: string;
+  triggered_count: number;
+  created_at: string;
+}
+
+export interface WatchlistListResponse {
+  items: WatchlistItem[];
+  total: number;
+  doctor_user_id: string;
+}
+
+export async function listWatchlist(): Promise<WatchlistListResponse> {
+  const { data } = await apiClient.get<WatchlistListResponse>('/v1/sentinel/watchlist');
+  return data;
+}
+
+export async function addWatchlist(payload: {
+  pattern: string;
+  lesson_text: string;
+  source_visit_id?: string;
+  source_mode?: 'hindsight' | 'at_the_time';
+}): Promise<WatchlistItem> {
+  const { data } = await apiClient.post<WatchlistItem>('/v1/sentinel/watchlist', {
+    source_mode: 'hindsight',
+    ...payload,
+  });
+  return data;
+}
+
+export async function dismissWatchlist(id: string): Promise<void> {
+  await apiClient.delete(`/v1/sentinel/watchlist/${id}`);
+}
+
+export async function triggerWatchlist(id: string): Promise<WatchlistItem> {
+  const { data } = await apiClient.post<WatchlistItem>(`/v1/sentinel/watchlist/${id}/trigger`);
+  return data;
+}

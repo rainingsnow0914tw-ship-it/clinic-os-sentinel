@@ -13,6 +13,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   createVisit,
   getPatientDetail,
+  listWatchlist,
   PatientDetail,
   runIntake,
   runTriage,
@@ -22,6 +23,7 @@ import {
   TriageResponse,
   EducationResponse,
   AuditResponse,
+  WatchlistItem,
 } from '@/services/sentinelApi';
 import './styles.css';
 
@@ -54,6 +56,9 @@ function NewVisitPage() {
   const [educationResult, setEducationResult] = useState<EducationResponse | null>(null);
   const [auditResult, setAuditResult] = useState<AuditResponse | null>(null);
 
+  // Phase 7.2: 醫師個人 watchlist (banner 提醒)
+  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
+
   useEffect(() => {
     if (!patientId) return;
     getPatientDetail(patientId)
@@ -61,6 +66,15 @@ function NewVisitPage() {
       .catch((e) => setError(e?.message ?? '載入病人資料失敗'))
       .finally(() => setLoading(false));
   }, [patientId]);
+
+  useEffect(() => {
+    // Phase 7.2: 載入醫師 watchlist
+    listWatchlist()
+      .then((r) => setWatchlist(r.items))
+      .catch(() => {
+        /* watchlist 失敗不阻塞新就診 */
+      });
+  }, []);
 
   async function runAiSuggestions() {
     if (!patient) return;
@@ -196,6 +210,29 @@ function NewVisitPage() {
           </div>
         )}
       </div>
+
+      {/* Phase 7.2: 醫師 watchlist banner (AI 反訓練醫生) */}
+      {watchlist.length > 0 && (
+        <details className="doctor-watchlist-banner" open>
+          <summary>
+            📌 你過去學到的 ({watchlist.length} 條 watchlist)
+            <span className="watchlist-hint">寫病歷時順手對照</span>
+          </summary>
+          <ul className="watchlist-list">
+            {watchlist.map((w) => (
+              <li key={w.id} className="watchlist-item">
+                <div className="watchlist-pattern">
+                  <strong>📌 {w.pattern}</strong>
+                  {w.triggered_count > 0 && (
+                    <span className="watchlist-trigger-count">已撞 {w.triggered_count} 次</span>
+                  )}
+                </div>
+                <div className="watchlist-lesson">{w.lesson_text}</div>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
 
       {error && <div className="error" style={{ marginBottom: 12 }}>⚠️ {error}</div>}
 

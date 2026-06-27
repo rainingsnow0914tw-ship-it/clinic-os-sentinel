@@ -870,3 +870,117 @@
   color: #713f12;
   line-height: 1.5;
 }
+
+/* ─── Phase 7.2: Mode B 「加進 watchlist」按鈕 ─── */
+.watchlist-action {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed #cbd5e1;
+}
+
+.btn-add-watchlist {
+  padding: 6px 12px;
+  background: #fde68a;
+  border: 1px solid #b45309;
+  color: #92400e;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.15s;
+}
+
+.btn-add-watchlist:hover:not(:disabled) {
+  background: #fcd34d;
+  transform: translateY(-1px);
+}
+
+.btn-add-watchlist:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.watchlist-saved {
+  padding: 8px 10px;
+  background: #ecfdf5;
+  border: 1px solid #6ee7b7;
+  color: #047857;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.watchlist-error {
+  padding: 6px 10px;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #991b1b;
+  border-radius: 4px;
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+/* ─── NewVisitPage 頂部 watchlist banner ─── */
+.doctor-watchlist-banner {
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fef9c3 100%);
+  border: 1px solid #fbbf24;
+  border-radius: 6px;
+}
+
+.doctor-watchlist-banner > summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #78350f;
+  font-size: 14px;
+  user-select: none;
+}
+
+.doctor-watchlist-banner .watchlist-hint {
+  font-weight: normal;
+  color: #92400e;
+  margin-left: 8px;
+  font-size: 12px;
+}
+
+.watchlist-list {
+  list-style: none;
+  padding: 8px 0 0;
+  margin: 8px 0 0;
+  border-top: 1px solid #fbbf24;
+}
+
+.watchlist-item {
+  padding: 6px 0;
+  border-bottom: 1px dashed #fbbf24;
+  font-size: 13px;
+}
+
+.watchlist-item:last-child {
+  border-bottom: none;
+}
+
+.watchlist-pattern {
+  color: #78350f;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.watchlist-trigger-count {
+  display: inline-block;
+  padding: 1px 6px;
+  background: #92400e;
+  color: #fff;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.watchlist-lesson {
+  color: #1f2937;
+  white-space: pre-wrap;
+  font-size: 12px;
+  padding-left: 8px;
+}

@@ -14,6 +14,7 @@ from app.routes.reports import router as reports_router
 from app.routes.sentinel import router as sentinel_router
 from app.routes.sentinel_patients import router as sentinel_patients_router
 from app.routes.sentinel_review import router as sentinel_review_router
+from app.routes.sentinel_watchlist import router as sentinel_watchlist_router
 
 __all__ = [
     "auth_router",
@@ -29,4 +30,5 @@ __all__ = [
     "sentinel_router",
     "sentinel_patients_router",
     "sentinel_review_router",
+    "sentinel_watchlist_router",
 ]
