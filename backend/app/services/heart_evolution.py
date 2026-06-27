@@ -633,7 +633,11 @@ def load_heart_layer_at_visit(
     fallback 順序:
     1. 該 visit + prefer snapshot
     2. 該 visit + 另一個 snapshot
-    3. 當下心臟層 (reconstruct fallback, 不準但跑得通)
+    3. reconstruct (用 first_observed_at_visit / diagnosed_at / measured_at
+       過濾出該 visit_date 那一刻的心臟層狀態, 不會看到後續演進)
+
+    司機 6/28 反饋 bug: 之前 fallback:current 把後續 visit 才出現的紅旗
+    餵給 Mode A 「當時可獲得」, AI 變先知. reconstruct fallback 修這個.
     """
     snap = db.scalars(
         select(HeartLayerSnapshot).where(
@@ -658,7 +662,135 @@ def load_heart_layer_at_visit(
             "summary_text": snap.summary_text or "",
             "source": f"snapshot:{snap.snapshot_type}",
         }
-    # fallback: 沒拍到 (舊 demo data) -> 反推當下心臟層
+    # fallback: reconstruct (按 target visit_date 過濾, 不含後續演進)
+    if prefer == "before_visit":
+        return reconstruct_heart_at(db, visit.patient_id, visit.visit_date)
+    # Mode B (hindsight) 看當下 OK
     payload = _serialize_heart_layer(db, visit.patient_id)
-    payload["source"] = "fallback:current"
+    payload["source"] = "fallback:current (Mode B)"
     return payload
+
+
+def reconstruct_heart_at(
+    db: Session, patient_id: uuid.UUID, target_visit_date
+) -> dict:
+    """重建 target_visit_date 那一刻的心臟層狀態 (過濾掉後續演進)。
+
+    過濾規則:
+    - flag: first_observed_at_visit 對應 visit_date > target 排除
+            confidence_status='confirmed' 但 confirmed_at_visit > target → 回推 to_observe
+    - problem: diagnosed_at > target 排除
+    - medication: source='agent' (evolve 加) created_at > target 排除;
+                  source='mock' (seed 既存) 保留 (病人本來就在吃)
+    - baseline: measured_at > target 排除
+    """
+    target_date = target_visit_date.date() if hasattr(target_visit_date, "date") else target_visit_date
+
+    # 預先 cache 該 patient 所有相關 visit 的 visit_date (避免 N+1)
+    visits = db.scalars(
+        select(Visit).where(Visit.patient_id == patient_id)
+    ).all()
+    visit_date_by_id = {v.id: v.visit_date for v in visits}
+
+    # 1. flags
+    flags_raw = db.scalars(
+        select(PatientFlag).where(PatientFlag.patient_id == patient_id)
+    ).all()
+    flags_json = []
+    for f in flags_raw:
+        if f.first_observed_at_visit:
+            fov_date = visit_date_by_id.get(f.first_observed_at_visit)
+            if fov_date and fov_date > target_visit_date:
+                continue  # 這 flag 是 target 之後才出現的
+        confidence = f.confidence_status
+        if confidence == "confirmed" and f.confirmed_at_visit:
+            cov_date = visit_date_by_id.get(f.confirmed_at_visit)
+            if cov_date and cov_date > target_visit_date:
+                confidence = "to_observe"  # 還沒升 confirmed
+        flags_json.append({
+            "id": str(f.id),
+            "flag_type": f.flag_type,
+            "severity": f.severity,
+            "content": f.content,
+            "confidence_status": confidence,
+            "flag_source": f.flag_source,
+            "valid_until": f.valid_until.isoformat() if f.valid_until else None,
+        })
+
+    # 2. problems
+    problems_raw = db.scalars(
+        select(PatientProblem).where(PatientProblem.patient_id == patient_id)
+    ).all()
+    problems_json = []
+    for p in problems_raw:
+        if p.diagnosed_at and p.diagnosed_at > target_date:
+            continue
+        problems_json.append({
+            "id": str(p.id),
+            "problem_name": p.problem_name,
+            "icd10_code": p.icd10_code,
+            "control_status": p.control_status,
+            "problem_source": p.problem_source,
+            "diagnosed_at": p.diagnosed_at.isoformat() if p.diagnosed_at else None,
+        })
+
+    # 3. medications: evolve 加的按 created_at, seed 既存保留
+    medications_raw = db.scalars(
+        select(PatientMedication).where(PatientMedication.patient_id == patient_id)
+    ).all()
+    medications_json = []
+    for m in medications_raw:
+        if m.source == "agent" and m.created_at and m.created_at > target_visit_date:
+            continue
+        if not m.is_active:
+            continue
+        medications_json.append({
+            "id": str(m.id),
+            "medication_name": m.medication_name,
+            "category": m.category,
+            "dosage": m.dosage,
+            "frequency": m.frequency,
+            "is_active": m.is_active,
+        })
+
+    # 4. baselines: measured_at <= target
+    baselines_raw = db.scalars(
+        select(PatientBaseline).where(PatientBaseline.patient_id == patient_id)
+    ).all()
+    baselines_json = []
+    for b in baselines_raw:
+        if b.measured_at and b.measured_at > target_visit_date:
+            continue
+        baselines_json.append({
+            "id": str(b.id),
+            "category": b.category,
+            "value_text": b.value_text,
+            "measured_at": b.measured_at.isoformat() if b.measured_at else None,
+        })
+
+    confirmed_flags = [f for f in flags_json if f["confidence_status"] == "confirmed"]
+    to_observe_flags = [f for f in flags_json if f["confidence_status"] == "to_observe"]
+    summary_lines = [
+        f"心臟層摘要 (重建 {target_date}): {len(confirmed_flags)} 紅旗確認 / {len(to_observe_flags)} 待觀察 / {len(problems_json)} 慢性病 / {len(medications_json)} 長期用藥 / {len(baselines_json)} baseline",
+    ]
+    if confirmed_flags:
+        summary_lines.append(
+            "確認紅旗: " + "; ".join(f["content"][:40] for f in confirmed_flags[:5])
+        )
+    if problems_json:
+        summary_lines.append(
+            "慢性病: " + ", ".join(p["problem_name"] for p in problems_json[:8])
+        )
+    if medications_json:
+        summary_lines.append(
+            "長期用藥: " + ", ".join(m["medication_name"] for m in medications_json[:8])
+        )
+
+    return {
+        "flags_json": flags_json,
+        "problems_json": problems_json,
+        "medications_json": medications_json,
+        "baselines_json": baselines_json,
+        "summary_text": "\n".join(summary_lines),
+        "source": f"reconstruct:{target_date}",
+    }
