@@ -48,12 +48,15 @@ from app.core.database import SessionLocal
 from app.models import (
     AiDraft,
     Clinic,
+    Drug,
     HeartLayerSnapshot,
     Patient,
     PatientBaseline,
     PatientFlag,
     PatientMedication,
     PatientProblem,
+    Prescription,
+    PrescriptionItem,
     SOURCE_MOCK,
     User,
     Visit,
@@ -75,8 +78,24 @@ PATIENT_NAME = "王慧明 (王阿姨)"
 # ============================================================
 # 四幕劇 dataset
 # ============================================================
+# Rx 設計 (Norvasc=amlodipine, Brufen=ibuprofen, Panadol=acetaminophen)
+# 格式: list of (drug_code, usage_text, daily_dose, days)
+# total_quantity = daily_dose × days 由 helper 算
+RX_ACT_1 = [("AMLODIPINE_5", "1# QD", 1, 30)]
+RX_ACT_2 = [("AMLODIPINE_5", "1# QD (refill)", 1, 60)]
+RX_ACT_3 = [
+    ("AMLODIPINE_5", "1# QD", 1, 60),
+    ("IBU_400",      "1# tid PRN (頭痛需要時)", 3, 14),
+]
+RX_ACT_4 = [
+    ("AMLODIPINE_5", "1# QD", 1, 30),
+    ("PARA_500",     "1# tid PRN (替代 ibuprofen)", 3, 14),
+]
+
+
 ACT_1 = {
     "name": "幕 1: 首診頭暈",
+    "rx": RX_ACT_1,
     "visit_date": datetime(2025, 9, 20, 9, 30, tzinfo=timezone.utc),
     "chief_complaint": "最近常常頭暈, 已有 2 週",
     "hpi": "近 2 週反覆頭暈, 站立時為甚, 從沒測過 BP. 否認頭痛胸悶心悸",
@@ -143,6 +162,7 @@ ACT_1 = {
 
 ACT_2 = {
     "name": "幕 2: 4 週追蹤",
+    "rx": RX_ACT_2,
     "visit_date": datetime(2025, 10, 15, 9, 30, tzinfo=timezone.utc),
     "chief_complaint": "頭暈減少, 自測 BP 平均 145/90",
     "hpi": "服 amlodipine 5mg QD 共 4 週, 自測 BP 早晚平均 145/90, 頭暈頻率明顯減少",
@@ -208,6 +228,7 @@ ACT_2 = {
 
 ACT_3 = {
     "name": "幕 3: 慢性追蹤 + 開 ibuprofen",
+    "rx": RX_ACT_3,
     "visit_date": datetime(2026, 2, 15, 10, 0, tzinfo=timezone.utc),
     "chief_complaint": "BP 還算穩, 但最近常頭痛 + 偶爾忘事",
     "hpi": (
@@ -299,6 +320,7 @@ ACT_3 = {
 
 ACT_4 = {
     "name": "幕 4: NSAID 拮抗顯現 + 認知症狀升 confirmed",
+    "rx": RX_ACT_4,
     "visit_date": datetime(2026, 6, 26, 10, 0, tzinfo=timezone.utc),
     "chief_complaint": "最近頭暈又開始了 + 健忘越來越明顯 + 上週差點跌倒",
     "hpi": (
@@ -420,6 +442,12 @@ def cleanup_existing(db: Session, clinic_id: uuid.UUID) -> None:
         v.id for v in db.scalars(select(Visit).where(Visit.patient_id == pid)).all()
     ]
     if visit_ids:
+        rx_ids = [
+            r.id for r in db.scalars(select(Prescription).where(Prescription.visit_id.in_(visit_ids))).all()
+        ]
+        if rx_ids:
+            db.execute(delete(PrescriptionItem).where(PrescriptionItem.prescription_id.in_(rx_ids)))
+            db.execute(delete(Prescription).where(Prescription.id.in_(rx_ids)))
         db.execute(delete(HeartLayerSnapshot).where(HeartLayerSnapshot.visit_id.in_(visit_ids)))
         db.execute(delete(AiDraft).where(AiDraft.visit_id.in_(visit_ids)))
         db.execute(delete(VisitExamination).where(VisitExamination.visit_id.in_(visit_ids)))
@@ -502,6 +530,41 @@ def play_act(db: Session, clinic: Clinic, owner: User, patient: Patient, act: di
             source=SOURCE_MOCK,
             is_demo_data=True,
         ))
+
+    # Phase 7: 寫 Prescription + PrescriptionItem (司機指出王阿姨四幕劇缺處方)
+    rx_list = act.get("rx") or []
+    if rx_list:
+        rx = Prescription(
+            id=uuid.uuid4(),
+            clinic_id=clinic.id,
+            visit_id=visit.id,
+            status="dispensed",
+            source=SOURCE_MOCK,
+            is_demo_data=True,
+        )
+        db.add(rx)
+        db.flush()
+        for drug_code, usage_text, daily_dose, days in rx_list:
+            drug = db.scalars(select(Drug).where(Drug.code == drug_code)).first()
+            if not drug:
+                logger.warning("  drug code %r not found in drugs table, skip", drug_code)
+                continue
+            total_qty = int(daily_dose * days)
+            db.add(PrescriptionItem(
+                id=uuid.uuid4(),
+                clinic_id=clinic.id,
+                prescription_id=rx.id,
+                drug_id=drug.id,
+                usage_text=usage_text,
+                daily_dose=daily_dose,
+                days=days,
+                total_quantity=total_qty,
+                unit_price_at_time=0,
+                total_price=0,
+                source=SOURCE_MOCK,
+                is_demo_data=True,
+            ))
+        logger.info("  Rx: %d items", len(rx_list))
 
     db.flush()
     # 跑 Phase 5 evolve
