@@ -148,6 +148,8 @@ function NewVisitPage() {
       if (auditResult) aiDrafts.push({ agent_type: 'audit', payload: auditResult });
       if (educationResult) aiDrafts.push({ agent_type: 'education', payload: educationResult });
 
+      const rxLines = rxInput.split('\n').map((s) => s.trim()).filter(Boolean);
+
       const res = await createVisit(patientId, {
         chief_complaint: cc,
         hpi: hpi || undefined,
@@ -156,6 +158,7 @@ function NewVisitPage() {
         vital_signs: Object.keys(vs).length ? vs : undefined,
         free_notes: freeNotes || undefined,
         ai_drafts: aiDrafts.length > 0 ? aiDrafts : undefined,
+        prescription_lines: rxLines.length > 0 ? rxLines : undefined,
       });
       // 寫進 DB 完成 → 回 detail 頁
       navigate(`/sentinel/patients/${patientId}?new_visit=${res.visit_id}`);

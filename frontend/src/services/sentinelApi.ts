@@ -160,7 +160,8 @@ export interface NewVisitInput {
     oxygen_saturation?: number;
   };
   free_notes?: string;
-  ai_drafts?: AiDraftInput[];  // Phase 4.2c
+  ai_drafts?: AiDraftInput[];        // Phase 4.2c
+  prescription_lines?: string[];      // Phase 7.3: 每行一個 Rx, backend parse drug name + dose
 }
 
 export interface NewVisitResponse {
@@ -273,7 +274,7 @@ export async function runIntake(rawDictation: string, chiefComplaintHint?: strin
   const { data } = await apiClient.post<IntakeResponse>('/v1/sentinel/intake', {
     raw_dictation: rawDictation,
     chief_complaint_hint: chiefComplaintHint,
-  });
+  }, { timeout: 120000 });
   return data;
 }
 
@@ -288,7 +289,7 @@ export async function runTriage(
     flags: toSentinelFlags(flags),
     problems: toSentinelProblems(problems),
     medications: toSentinelMeds(meds),
-  });
+  }, { timeout: 120000 });
   return data;
 }
 
@@ -300,7 +301,7 @@ export async function runEducation(
     diagnosis,
     patient_habits: {},
     patient_name_hint: patientNameHint,
-  });
+  }, { timeout: 120000 });
   return data;
 }
 
@@ -315,7 +316,7 @@ export async function runAudit(
     flags: toSentinelFlags(flags),
     long_term_medications: toSentinelMeds(meds),
     problems: toSentinelProblems(problems),
-  });
+  }, { timeout: 120000 });
   return data;
 }
 

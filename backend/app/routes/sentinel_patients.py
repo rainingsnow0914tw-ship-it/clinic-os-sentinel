@@ -21,6 +21,7 @@ endpoint, 避開 jimmy Sprint 2 patients stub + clinic_permission middleware
 from __future__ import annotations
 
 import logging
+import re
 from typing import Optional
 from uuid import UUID
 
@@ -67,6 +68,70 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def _build_drug_keyword_map(db: Session) -> dict[str, Drug]:
+    """build keyword (lower) -> Drug map: drug.name + drug.code 學名變體.
+
+    司機 6/28 反饋: medic 填 Rx textarea 但完成就診後處方不見了.
+    解法: parse Rx 每行第 1 詞 fuzzy match drug.name 或 drug.code 學名.
+
+    e.g. 'Azithromycin 250 首次2粒 qd 5 day' → match 'azithromycin' →
+         Zithromax (AZITHROMYCIN_250)
+    """
+    drugs = db.scalars(select(Drug)).all()
+    out: dict[str, Drug] = {}
+    for d in drugs:
+        # brand name (Norvasc)
+        if d.name:
+            out[d.name.lower()] = d
+        # code 學名 (AMLODIPINE_5 -> amlodipine)
+        if d.code:
+            base = d.code.split("_")[0].lower()
+            if base and base not in out:
+                out[base] = d
+    return out
+
+
+def _parse_rx_line(line: str, drug_by_kw: dict[str, Drug]) -> tuple[Drug | None, str, int, int]:
+    """Parse one Rx textarea line.
+
+    Args:
+      line: 'Azithromycin 250 首次2粒 qd 5 day'
+      drug_by_kw: keyword (lower) -> Drug
+
+    Returns: (drug or None, usage_text=full_line, daily_dose, days)
+    """
+    line_lower = line.lower()
+
+    # parse days
+    days = 7
+    m = re.search(r"(\d+)\s*(?:day|d\b|天|d\s*$)", line_lower)
+    if m:
+        try:
+            days = int(m.group(1))
+        except ValueError:
+            pass
+
+    # parse daily_dose by frequency keyword
+    daily_dose = 1
+    if re.search(r"\bbid\b|\bq12h\b", line_lower):
+        daily_dose = 2
+    elif re.search(r"\btid\b|\bq8h\b", line_lower):
+        daily_dose = 3
+    elif re.search(r"\bqid\b|\bq6h\b", line_lower):
+        daily_dose = 4
+    elif re.search(r"\bqd\b|\bqday\b|\bod\b|\bdaily\b", line_lower):
+        daily_dose = 1
+
+    # match drug (按 keyword 長度 desc 避免短 keyword 偷 match)
+    drug: Drug | None = None
+    for keyword in sorted(drug_by_kw.keys(), key=len, reverse=True):
+        if keyword in line_lower:
+            drug = drug_by_kw[keyword]
+            break
+
+    return drug, line[:500], daily_dose, days
 
 
 def _resolve_clinic_id(db: Session, clinic_id: Optional[UUID]) -> UUID:
@@ -471,6 +536,7 @@ class NewVisitRequest(BaseModel):
     vital_signs: VitalSignsInput | None = None
     free_notes: str | None = None
     ai_drafts: list[AiDraftInput] = []   # Phase 4.2c: AI panel 結果一起寫
+    prescription_lines: list[str] = []   # Phase 7.3: 一行一個 Rx, backend parse drug + dose
 
 
 class HeartEvolutionSummary(BaseModel):
@@ -488,6 +554,8 @@ class NewVisitResponse(BaseModel):
     visit_date: str
     status: str
     ai_drafts_saved: int = 0
+    prescription_items_saved: int = 0   # Phase 7.3
+    prescription_items_unmatched: list[str] = []   # 找不到對應 drug 的 raw line
     heart_evolution: HeartEvolutionSummary | None = None
 
 
@@ -605,6 +673,49 @@ def create_visit(
     # 再 flush 確保 ai_drafts 在 evolve_heart_layer 撈得到
     db.flush()
 
+    # Phase 7.3: 寫 Prescription + PrescriptionItem (司機 6/28 反饋 Rx 不見)
+    rx_saved = 0
+    rx_unmatched: list[str] = []
+    if payload.prescription_lines:
+        drug_kw_map = _build_drug_keyword_map(db)
+        rx_obj = Prescription(
+            id=uuid4(),
+            clinic_id=patient.clinic_id,
+            visit_id=visit_uuid,
+            status="dispensed",
+            source="manual",
+            is_demo_data=False,
+        )
+        db.add(rx_obj)
+        db.flush()
+        for raw_line in payload.prescription_lines:
+            if not raw_line.strip():
+                continue
+            drug, usage_text, daily_dose, days = _parse_rx_line(raw_line.strip(), drug_kw_map)
+            if not drug:
+                rx_unmatched.append(raw_line.strip())
+                continue
+            total_qty = max(1, int(daily_dose * days))
+            db.add(PrescriptionItem(
+                id=uuid4(),
+                clinic_id=patient.clinic_id,
+                prescription_id=rx_obj.id,
+                drug_id=drug.id,
+                usage_text=usage_text,
+                daily_dose=daily_dose,
+                days=days,
+                total_quantity=total_qty,
+                unit_price_at_time=0,
+                total_price=0,
+                source="manual",
+                is_demo_data=False,
+            ))
+            rx_saved += 1
+        # 沒任何 item 就刪 prescription 殼
+        if rx_saved == 0:
+            db.delete(rx_obj)
+        db.flush()
+
     # Phase 5: visit 完成時自動演進心臟層 (problems / medications / flags / baselines)
     evolution = evolve_heart_layer_after_visit(db, visit)
 
@@ -620,6 +731,8 @@ def create_visit(
         visit_date=vdate.isoformat(),
         status="completed",
         ai_drafts_saved=drafts_saved,
+        prescription_items_saved=rx_saved,
+        prescription_items_unmatched=rx_unmatched,
         heart_evolution=HeartEvolutionSummary(
             problems_added=evolution.problems_added,
             medications_added=evolution.medications_added,
