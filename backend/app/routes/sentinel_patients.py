@@ -48,6 +48,7 @@ from app.models import (
     PrescriptionItem,
     Visit,
 )
+from app.services.heart_evolution import evolve_heart_layer_after_visit
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -469,12 +470,22 @@ class NewVisitRequest(BaseModel):
     ai_drafts: list[AiDraftInput] = []   # Phase 4.2c: AI panel 結果一起寫
 
 
+class HeartEvolutionSummary(BaseModel):
+    """Phase 5: visit 完成時心臟層自動演進統計"""
+    problems_added: int = 0
+    medications_added: int = 0
+    flags_added: int = 0
+    flags_upgraded: int = 0
+    baselines_added: int = 0
+
+
 class NewVisitResponse(BaseModel):
     visit_id: UUID
     patient_id: UUID
     visit_date: str
     status: str
     ai_drafts_saved: int = 0
+    heart_evolution: HeartEvolutionSummary | None = None
 
 
 @router.post(
@@ -585,6 +596,12 @@ def create_visit(
             db.add(draft)
             drafts_saved += 1
 
+    # 再 flush 確保 ai_drafts 在 evolve_heart_layer 撈得到
+    db.flush()
+
+    # Phase 5: visit 完成時自動演進心臟層 (problems / medications / flags / baselines)
+    evolution = evolve_heart_layer_after_visit(db, visit)
+
     db.commit()
 
     return NewVisitResponse(
@@ -593,4 +610,11 @@ def create_visit(
         visit_date=vdate.isoformat(),
         status="completed",
         ai_drafts_saved=drafts_saved,
+        heart_evolution=HeartEvolutionSummary(
+            problems_added=evolution.problems_added,
+            medications_added=evolution.medications_added,
+            flags_added=evolution.flags_added,
+            flags_upgraded=evolution.flags_upgraded,
+            baselines_added=evolution.baselines_added,
+        ),
     )
