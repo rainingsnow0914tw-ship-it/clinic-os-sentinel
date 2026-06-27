@@ -13,16 +13,21 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   createVisit,
   getPatientDetail,
+  listDrugCategories,
   listWatchlist,
   PatientDetail,
+  PrescriptionItemInput,
   runIntake,
   runTriage,
   runEducation,
   runAudit,
+  searchDrugs,
   IntakeResponse,
   TriageResponse,
   EducationResponse,
   AuditResponse,
+  CategoryItem,
+  DrugItem,
   WatchlistItem,
 } from '@/services/sentinelApi';
 import './styles.css';
@@ -59,6 +64,56 @@ function NewVisitPage() {
   // Phase 7.2: 醫師個人 watchlist (banner 提醒)
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
 
+  // Phase 7.4: 結構化 Rx form (分類 dropdown / 搜尋 / 次/顆/天)
+  type RxRow = {
+    category: string;       // 分類 (或 '__search__' 直接搜尋模式)
+    drug?: DrugItem;        // 選定的 drug
+    q: string;              // type-ahead 搜尋字串
+    searching: boolean;
+    searchResults: DrugItem[];
+    freq: string;           // qd / bid / tid / qid / q6h / q8h / q12h / prn
+    perDose: number;        // 每次幾顆
+    days: number;
+  };
+  const [rxRows, setRxRows] = useState<RxRow[]>([]);
+  const [drugCats, setDrugCats] = useState<CategoryItem[]>([]);
+  const [drugsByCat, setDrugsByCat] = useState<Record<string, DrugItem[]>>({});
+
+  const freqToCount = (f: string) => ({
+    qd: 1, bid: 2, tid: 3, qid: 4,
+    q6h: 4, q8h: 3, q12h: 2,
+    prn: 1,
+  } as Record<string, number>)[f] || 1;
+
+  function makeRxRow(): RxRow {
+    return { category: '', q: '', searching: false, searchResults: [], freq: 'tid', perDose: 1, days: 5 };
+  }
+  function addRxRow() { setRxRows((rs) => [...rs, makeRxRow()]); }
+  function updateRxRow(i: number, patch: Partial<RxRow>) {
+    setRxRows((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  }
+  function deleteRxRow(i: number) { setRxRows((rs) => rs.filter((_, j) => j !== i)); }
+
+  async function loadDrugsForCategory(cat: string) {
+    if (drugsByCat[cat]) return;
+    const items = await searchDrugs({ category: cat, limit: 200 });
+    setDrugsByCat((m) => ({ ...m, [cat]: items }));
+  }
+
+  async function handleRxSearch(i: number, q: string) {
+    updateRxRow(i, { q, searching: q.trim().length > 0 });
+    if (q.trim().length < 2) {
+      updateRxRow(i, { searchResults: [] });
+      return;
+    }
+    try {
+      const items = await searchDrugs({ q, limit: 20 });
+      updateRxRow(i, { searchResults: items, searching: false });
+    } catch {
+      updateRxRow(i, { searching: false });
+    }
+  }
+
   useEffect(() => {
     if (!patientId) return;
     getPatientDetail(patientId)
@@ -74,6 +129,10 @@ function NewVisitPage() {
       .catch(() => {
         /* watchlist 失敗不阻塞新就診 */
       });
+    // Phase 7.4: 載入 drug 分類
+    listDrugCategories()
+      .then(setDrugCats)
+      .catch(() => {});
   }, []);
 
   async function runAiSuggestions() {
@@ -92,7 +151,10 @@ function NewVisitPage() {
       // 並行 call sentinel agents (Qwen 每個 5-15s, 並行加快)
       const hl = patient.heart_layer;
       const workingHypothesis = dx.trim() || cc;
-      const rxList = rxInput.split('\n').map((s) => s.trim()).filter(Boolean);
+      // Phase 7.4: 從 form rxRows 取藥名 (drug.name) + 加上 textarea fallback
+      const rxFromForm = rxRows.filter((r) => r.drug).map((r) => r.drug!.name);
+      const rxFromText = rxInput.split('\n').map((s) => s.trim()).filter(Boolean);
+      const rxList = [...rxFromForm, ...rxFromText];
 
       const [intakeRes, triageRes, eduRes, auditRes] = await Promise.allSettled([
         runIntake(`${cc}${hpi ? '。' + hpi : ''}`, cc),
@@ -149,6 +211,15 @@ function NewVisitPage() {
       if (educationResult) aiDrafts.push({ agent_type: 'education', payload: educationResult });
 
       const rxLines = rxInput.split('\n').map((s) => s.trim()).filter(Boolean);
+      // Phase 7.4: 結構化 Rx items (主要途徑)
+      const rxItems: PrescriptionItemInput[] = rxRows
+        .filter((r) => r.drug)
+        .map((r) => ({
+          drug_id: r.drug!.id,
+          usage_text: `${r.drug!.name} ${r.perDose}# ${r.freq} × ${r.days}D`,
+          daily_dose: freqToCount(r.freq) * r.perDose,
+          days: r.days,
+        }));
 
       const res = await createVisit(patientId, {
         chief_complaint: cc,
@@ -159,6 +230,7 @@ function NewVisitPage() {
         free_notes: freeNotes || undefined,
         ai_drafts: aiDrafts.length > 0 ? aiDrafts : undefined,
         prescription_lines: rxLines.length > 0 ? rxLines : undefined,
+        prescription_items: rxItems.length > 0 ? rxItems : undefined,
       });
       // 寫進 DB 完成 → 回 detail 頁
       navigate(`/sentinel/patients/${patientId}?new_visit=${res.visit_id}`);
@@ -307,15 +379,132 @@ function NewVisitPage() {
           />
         </label>
 
-        <label>
-          <span className="field-label">Rx 處方 (一行一個藥, 跑 AI audit 用 / Phase 4.2c 才會寫進 DB)</span>
-          <textarea
-            rows={3}
-            placeholder={'例:\nAmlodipine 5mg qd\nIbuprofen 400mg tid prn'}
-            value={rxInput}
-            onChange={(e) => setRxInput(e.target.value)}
-          />
-        </label>
+        <div className="rx-form-section">
+          <span className="field-label">💊 處方 (選分類 → 選藥 → 用法)</span>
+          {rxRows.length === 0 && (
+            <div className="rx-empty-hint">尚無處方, 點下方「+ 加處方」開始</div>
+          )}
+          {rxRows.map((row, i) => (
+            <div className="rx-form-row" key={i}>
+              <div className="rx-row-line">
+                <select
+                  value={row.category}
+                  onChange={(e) => {
+                    const cat = e.target.value;
+                    updateRxRow(i, { category: cat, drug: undefined, q: '', searchResults: [] });
+                    if (cat && cat !== '__search__') loadDrugsForCategory(cat);
+                  }}
+                  className="rx-cat-select"
+                >
+                  <option value="">-- 選分類 --</option>
+                  {drugCats.map((c) => (
+                    <option key={c.category} value={c.category}>{c.category} ({c.count})</option>
+                  ))}
+                  <option value="__search__">🔍 直接搜尋</option>
+                </select>
+
+                {row.category && row.category !== '__search__' && (
+                  <select
+                    value={row.drug?.id || ''}
+                    onChange={(e) => {
+                      const d = drugsByCat[row.category]?.find((x) => x.id === e.target.value);
+                      updateRxRow(i, { drug: d });
+                    }}
+                    className="rx-drug-select"
+                  >
+                    <option value="">-- 選藥 --</option>
+                    {(drugsByCat[row.category] || []).map((d) => (
+                      <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
+                    ))}
+                  </select>
+                )}
+
+                {row.category === '__search__' && (
+                  <div className="rx-search-wrap">
+                    <input
+                      type="text"
+                      placeholder="輸入藥名 / 學名 / code..."
+                      value={row.q}
+                      onChange={(e) => handleRxSearch(i, e.target.value)}
+                      className="rx-search-input"
+                    />
+                    {row.searchResults.length > 0 && (
+                      <div className="rx-search-dropdown">
+                        {row.searchResults.map((d) => (
+                          <div
+                            key={d.id}
+                            className="rx-search-item"
+                            onClick={() => updateRxRow(i, { drug: d, q: d.name, searchResults: [] })}
+                          >
+                            <strong>{d.name}</strong> ({d.code}) · <span style={{ color: '#6b7280' }}>{d.category}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {row.drug && (
+                      <div className="rx-chosen-inline">✓ 已選: {row.drug.name} ({row.drug.code})</div>
+                    )}
+                  </div>
+                )}
+
+                <button type="button" onClick={() => deleteRxRow(i)} className="btn-rx-delete" title="刪除此處方">×</button>
+              </div>
+
+              <div className="rx-row-line rx-dose-line">
+                <select
+                  value={row.freq}
+                  onChange={(e) => updateRxRow(i, { freq: e.target.value })}
+                  className="rx-freq-select"
+                >
+                  <option value="qd">QD 一日一次</option>
+                  <option value="bid">BID 一日兩次</option>
+                  <option value="tid">TID 一日三次</option>
+                  <option value="qid">QID 一日四次</option>
+                  <option value="q6h">Q6H 每 6 hr</option>
+                  <option value="q8h">Q8H 每 8 hr</option>
+                  <option value="q12h">Q12H 每 12 hr</option>
+                  <option value="prn">PRN 需要時</option>
+                </select>
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={row.perDose}
+                  onChange={(e) => updateRxRow(i, { perDose: parseInt(e.target.value) || 1 })}
+                  className="rx-num-input"
+                  title="每次幾顆 / 每次劑量"
+                />
+                <span className="rx-dose-label">顆/次 ×</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={row.days}
+                  onChange={(e) => updateRxRow(i, { days: parseInt(e.target.value) || 1 })}
+                  className="rx-num-input"
+                  title="開幾天"
+                />
+                <span className="rx-dose-label">天</span>
+                {row.drug && (
+                  <span className="rx-total-qty">
+                    共 {freqToCount(row.freq) * row.perDose * row.days} {row.drug.unit}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+          <button type="button" onClick={addRxRow} className="btn-add-rx">+ 加處方</button>
+
+          <details className="rx-advanced">
+            <summary>📝 或者直接打字 (一行一個藥, 進階模式)</summary>
+            <textarea
+              rows={3}
+              placeholder={'Amlodipine 5mg qd\nIbuprofen 400mg tid prn'}
+              value={rxInput}
+              onChange={(e) => setRxInput(e.target.value)}
+            />
+          </details>
+        </div>
 
         <label>
           <span className="field-label">補充筆記 (free notes)</span>

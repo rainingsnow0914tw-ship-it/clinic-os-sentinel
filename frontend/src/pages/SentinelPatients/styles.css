@@ -984,3 +984,138 @@
   font-size: 12px;
   padding-left: 8px;
 }
+
+/* ─── Phase 7.4: Rx form UI (分類選單 + 搜尋 + 用法) ─── */
+.rx-form-section {
+  margin: 12px 0;
+  padding: 10px 12px;
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: 6px;
+}
+
+.rx-empty-hint {
+  padding: 12px;
+  color: #6b7280;
+  font-size: 13px;
+  text-align: center;
+  font-style: italic;
+}
+
+.rx-form-row {
+  margin-bottom: 8px;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid #d1fae5;
+  border-radius: 4px;
+}
+
+.rx-row-line {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.rx-row-line:last-child {
+  margin-bottom: 0;
+}
+
+.rx-cat-select { min-width: 130px; padding: 5px 8px; }
+.rx-drug-select { flex: 1; min-width: 200px; padding: 5px 8px; }
+.rx-freq-select { min-width: 140px; padding: 5px 8px; }
+.rx-num-input { width: 60px; padding: 5px 6px; text-align: center; }
+.rx-dose-label { font-size: 12px; color: #4b5563; }
+.rx-total-qty {
+  margin-left: auto;
+  padding: 2px 8px;
+  background: #dcfce7;
+  color: #166534;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.rx-search-wrap {
+  flex: 1;
+  min-width: 240px;
+  position: relative;
+}
+.rx-search-input {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+}
+.rx-search-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  z-index: 10;
+  max-height: 240px;
+  overflow-y: auto;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+.rx-search-item {
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 13px;
+  border-bottom: 1px solid #f3f4f6;
+}
+.rx-search-item:hover {
+  background: #f0fdf4;
+}
+.rx-chosen-inline {
+  margin-top: 4px;
+  color: #166534;
+  font-size: 12px;
+}
+
+.btn-rx-delete {
+  padding: 4px 10px;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #991b1b;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.btn-rx-delete:hover { background: #fecaca; }
+
+.btn-add-rx {
+  margin-top: 8px;
+  padding: 8px 14px;
+  background: #fff;
+  border: 1px dashed #16a34a;
+  color: #166534;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+.btn-add-rx:hover { background: #f0fdf4; }
+
+.rx-advanced {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px dashed #86efac;
+}
+.rx-advanced summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: #4b5563;
+}
+.rx-advanced textarea {
+  margin-top: 6px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 13px;
+}

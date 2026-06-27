@@ -39,6 +39,9 @@ class Drug(Base, TimestampMixin, DemoDataMixin):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     unit: Mapped[str] = mapped_column(String(20), nullable=False)  # 'tablet', 'ml', 'cap'
 
+    # Phase 7.4: 分類 (退燒止痛 / 抗生素 / 抗組織胺 / ...) for 處方選單
+    category: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
     # 預設售價（per unit）；mock data 用得到
     unit_price: Mapped[Decimal] = mapped_column(
         Numeric(10, 2), nullable=False, server_default="0"

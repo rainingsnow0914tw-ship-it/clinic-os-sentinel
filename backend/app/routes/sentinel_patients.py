@@ -527,6 +527,14 @@ class AiDraftInput(BaseModel):
     payload: dict     # full agent response
 
 
+class PrescriptionItemInput(BaseModel):
+    """Phase 7.4: 結構化 Rx item (form UI 用, 已選定 drug_id, 不用 parse)"""
+    drug_id: UUID
+    usage_text: str = Field(default="", max_length=500)
+    daily_dose: int = Field(..., ge=1)
+    days: int = Field(..., ge=1)
+
+
 class NewVisitRequest(BaseModel):
     chief_complaint: str = Field(..., min_length=1)
     hpi: str | None = None
@@ -536,7 +544,8 @@ class NewVisitRequest(BaseModel):
     vital_signs: VitalSignsInput | None = None
     free_notes: str | None = None
     ai_drafts: list[AiDraftInput] = []   # Phase 4.2c: AI panel 結果一起寫
-    prescription_lines: list[str] = []   # Phase 7.3: 一行一個 Rx, backend parse drug + dose
+    prescription_lines: list[str] = []   # Phase 7.3: 一行一個 Rx, backend parse drug + dose (fallback)
+    prescription_items: list[PrescriptionItemInput] = []   # Phase 7.4: 結構化 Rx (form UI 主要途徑)
 
 
 class HeartEvolutionSummary(BaseModel):
@@ -673,11 +682,12 @@ def create_visit(
     # 再 flush 確保 ai_drafts 在 evolve_heart_layer 撈得到
     db.flush()
 
-    # Phase 7.3: 寫 Prescription + PrescriptionItem (司機 6/28 反饋 Rx 不見)
+    # Phase 7.3/7.4: 寫 Prescription + PrescriptionItem
+    # 優先用結構化 prescription_items (form UI), fallback 用 prescription_lines (textarea parse)
     rx_saved = 0
     rx_unmatched: list[str] = []
-    if payload.prescription_lines:
-        drug_kw_map = _build_drug_keyword_map(db)
+    has_rx = bool(payload.prescription_items) or bool(payload.prescription_lines)
+    if has_rx:
         rx_obj = Prescription(
             id=uuid4(),
             clinic_id=patient.clinic_id,
@@ -688,30 +698,57 @@ def create_visit(
         )
         db.add(rx_obj)
         db.flush()
-        for raw_line in payload.prescription_lines:
-            if not raw_line.strip():
-                continue
-            drug, usage_text, daily_dose, days = _parse_rx_line(raw_line.strip(), drug_kw_map)
+
+        # 主途徑: 結構化 items (drug_id 已選定)
+        for item in payload.prescription_items or []:
+            drug = db.get(Drug, item.drug_id)
             if not drug:
-                rx_unmatched.append(raw_line.strip())
+                rx_unmatched.append(f"unknown drug_id {item.drug_id}")
                 continue
-            total_qty = max(1, int(daily_dose * days))
+            total_qty = max(1, int(item.daily_dose * item.days))
             db.add(PrescriptionItem(
                 id=uuid4(),
                 clinic_id=patient.clinic_id,
                 prescription_id=rx_obj.id,
                 drug_id=drug.id,
-                usage_text=usage_text,
-                daily_dose=daily_dose,
-                days=days,
+                usage_text=item.usage_text or f"{drug.name} ×{item.days}D",
+                daily_dose=item.daily_dose,
+                days=item.days,
                 total_quantity=total_qty,
-                unit_price_at_time=0,
-                total_price=0,
+                unit_price_at_time=drug.unit_price or 0,
+                total_price=(drug.unit_price or 0) * total_qty,
                 source="manual",
                 is_demo_data=False,
             ))
             rx_saved += 1
-        # 沒任何 item 就刪 prescription 殼
+
+        # Fallback: textarea raw lines (parse drug + dose)
+        if payload.prescription_lines:
+            drug_kw_map = _build_drug_keyword_map(db)
+            for raw_line in payload.prescription_lines:
+                if not raw_line.strip():
+                    continue
+                drug, usage_text, daily_dose, days = _parse_rx_line(raw_line.strip(), drug_kw_map)
+                if not drug:
+                    rx_unmatched.append(raw_line.strip())
+                    continue
+                total_qty = max(1, int(daily_dose * days))
+                db.add(PrescriptionItem(
+                    id=uuid4(),
+                    clinic_id=patient.clinic_id,
+                    prescription_id=rx_obj.id,
+                    drug_id=drug.id,
+                    usage_text=usage_text,
+                    daily_dose=daily_dose,
+                    days=days,
+                    total_quantity=total_qty,
+                    unit_price_at_time=drug.unit_price or 0,
+                    total_price=(drug.unit_price or 0) * total_qty,
+                    source="manual",
+                    is_demo_data=False,
+                ))
+                rx_saved += 1
+
         if rx_saved == 0:
             db.delete(rx_obj)
         db.flush()

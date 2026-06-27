@@ -39,6 +39,7 @@ from app.routes import (
     sentinel_patients_router,
     sentinel_review_router,
     sentinel_watchlist_router,
+    sentinel_drugs_router,
 )
 
 # ============================================================
@@ -147,3 +148,4 @@ app.include_router(sentinel_router,     prefix=prefix, tags=["sentinel"])
 app.include_router(sentinel_patients_router, prefix=prefix, tags=["sentinel-patients"])
 app.include_router(sentinel_review_router, prefix=prefix, tags=["sentinel-review"])
 app.include_router(sentinel_watchlist_router, prefix=prefix, tags=["sentinel-watchlist"])
+app.include_router(sentinel_drugs_router, prefix=prefix, tags=["sentinel-drugs"])

@@ -162,6 +162,14 @@ export interface NewVisitInput {
   free_notes?: string;
   ai_drafts?: AiDraftInput[];        // Phase 4.2c
   prescription_lines?: string[];      // Phase 7.3: 每行一個 Rx, backend parse drug name + dose
+  prescription_items?: PrescriptionItemInput[];   // Phase 7.4: 結構化 Rx (form UI 用)
+}
+
+export interface PrescriptionItemInput {
+  drug_id: string;
+  usage_text: string;
+  daily_dose: number;
+  days: number;
 }
 
 export interface NewVisitResponse {
@@ -339,6 +347,32 @@ export interface ReviewResponse {
   education: EducationResponse | null;
   skipped: string[];
   mode_disclaimer: string;
+}
+
+// ─── Phase 7.4 Drug 分類 + 搜尋 (處方選單) ────────────────────
+
+export interface DrugItem {
+  id: string;
+  code: string;
+  name: string;
+  unit: string;
+  category: string | null;
+  unit_price: number;
+}
+
+export interface CategoryItem {
+  category: string;
+  count: number;
+}
+
+export async function listDrugCategories(): Promise<CategoryItem[]> {
+  const { data } = await apiClient.get<{ items: CategoryItem[] }>('/v1/sentinel/drugs/categories');
+  return data.items;
+}
+
+export async function searchDrugs(params: { category?: string; q?: string; limit?: number }): Promise<DrugItem[]> {
+  const { data } = await apiClient.get<{ items: DrugItem[] }>('/v1/sentinel/drugs', { params });
+  return data.items;
 }
 
 export async function reviewVisit(
