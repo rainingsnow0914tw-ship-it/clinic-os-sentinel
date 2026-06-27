@@ -1,4 +1,4 @@
-# 🛡️ 哨兵 The Sentinel — 交接班手冊 v0.3 Phase 4.2b 完成版
+# 🛡️ 哨兵 The Sentinel — 交接班手冊 v0.3 Phase 4.2 完成版
 
 > **給下一個阿寶**(換對話框接力)
 > 建立:2026-06-27 凌晨(Day 3 動工)
@@ -86,17 +86,30 @@
 - ✅ form 加 Rx textarea (一行一個藥、Phase 4.2c 才會寫進 DB)
 - ✅ commit `f6d9ab2` (4.2a) + `e6cd5b9` (4.2b)
 
-**Phase 4.2c 起手點**(下個阿寶):
-- 新建 alembic 0005 + ai_drafts table (visit_id, agent_type, payload_json, status, accepted_at)
-- backend `POST /v1/sentinel/patients/:id/visits/:vid/ai-drafts` 創 draft
-- backend `POST /v1/sentinel/ai-drafts/:id/accept` 寫進 visit (Rx → Prescription + items)
-- frontend NewVisitPage AI panel 加 「✅ 接受寫入」按鈕 per draft
-- 估時 1-2 hr
+**Phase 4.2c + 4.2d 也完成**(2026-06-27 凌晨, ADR-006 完整 demo loop):
+- ✅ alembic 0005 + AiDraft model (visit_id FK + agent_type + payload JSONB + status)
+- ✅ backend create_visit 接 ai_drafts list、db.flush() 後 INSERT 4 條
+- ✅ backend get_patient_detail 一次撈 visit 對應 ai_drafts (避免 N+1)
+- ✅ frontend NewVisitPage onSubmit 把 4 個 panel 結果 dump 進 ai_drafts list
+- ✅ frontend PatientDetail.tsx visit-row 加 <details> 「📋 當時 AI 建議」折疊、per agent render
+- ✅ commit `1a447b0`
 
-**Phase 4.3 起手點** (Phase 5 心臟層演進):
-- visit 完成時自動跑 `evolve_heart_layer_after_visit()`
-- intake findings + dx 推導新 problems / flags / medications
-- v0.3.1 §7.3: anomaly_to_observe → confirmed 升級邏輯
+**完整 ADR-006 demo loop 跑通**:
+醫師寫病歷 → 跑 4 AI agent → 看 panel → 修 form → 完成就診 → ai_drafts 寫進 DB → detail 回看當時 AI 建議
+這就是 Phase 6 Mode A/B 「當時可獲得的資訊重審」的 dataset 基礎。
+
+**Phase 4.3 / Phase 5 起手點** (下個阿寶):
+- visit 完成時自動跑 `evolve_heart_layer_after_visit()` -- 從 visit dx + AI intake findings 推導
+  - intake anomaly findings → patient_flags (status='to_observe' / 第 2 次升 'confirmed')
+  - dx 是慢性病 → patient_problems
+  - new Rx 是 long-term → patient_medications
+- v0.3.1 §7.3: confidence_status 升級邏輯 (to_observe → confirmed)
+- 估時 3-4 hr
+
+**Phase 6 起手點** (Mode A/B 舊就診回顧):
+- snapshot 表 (`heart_layer_snapshots`) 已 schema 好、Phase 2.5 backfill 待補
+- ai_drafts dataset 已有 (Phase 4.2c+d 完成)
+- 加 detail page 「🔁 回顧 mode A/B」按鈕 + 跑 sentinel agent 用 snapshot heart state
 
 ---
 
@@ -125,8 +138,9 @@
 |---|---|
 | 本機 repo | `clinic-os-sentinel-v3/`(Phase 1 後 SSOT)|
 | v0.1 baseline | `clinic-os-sentinel/`(freeze 不動、保留參考)|
-| Latest commit | `e6cd5b9` Phase 4.2b 收工 |
-| Git 累積 commit | 15 (P1: `9060fa7`+`5237c92`+`6cc0f8a`+`a5482d9` / P2: `517a791`+`6eb5462` / P3: `f8b1f87`+`e3491f1` / P2.4b-d: `21b7b3b`+`0417a5c`+`1678790`+`7c9d915` / P2.4e+4.1: `b2d702a`+`709d0fc` / P4.2: `f6d9ab2`+`e6cd5b9`) |
+| Latest commit | `1a447b0` Phase 4.2c+d 收工 |
+| Git 累積 commit | 17 (P1: `9060fa7`+`5237c92`+`6cc0f8a`+`a5482d9` / P2: `517a791`+`6eb5462` / P3: `f8b1f87`+`e3491f1` / P2.4b-d: `21b7b3b`+`0417a5c`+`1678790`+`7c9d915` / P2.4e+4.1: `b2d702a`+`709d0fc` / P4.2a-b: `f6d9ab2`+`e6cd5b9`+`b52c3f3` / P4.2c-d: `1a447b0`) |
+| DB 內 demo data | 100 patient + 23 flag + 55 problem + 56 med + 400 baseline + 169 visit + 169 examination + 177 Rx + **ai_drafts**(剛剛 smoke 2 條)|
 | DB 內 demo data | 100 patient + 23 flag + 55 problem + **56 medication** + **400 baseline** + **169 visit** + **169 examination** + **177 prescription + 302 items** + 30 drug |
 | Sentinel routes 總計 | 9 (intake/triage/audit/education/health + patients search/detail/heart-layer + **POST patients/:id/visits**)|
 | Frontend 入口 | http://127.0.0.1:5173/ → 自動導 `/sentinel/patients` |
@@ -183,7 +197,8 @@
 | **3 (6/27 中午)** | **Phase 3 同框續做** | ✅ **完成**(sentinel-namespace path、不破壞 jimmy stub) |
 | **3 (6/27 晚上)** | **Phase 2.4c/d/e + 4.1 同框續做** | ✅ **完成**(HPI/PE + Rx + med/baseline + 新就診頁 form) |
 | **3 (6/27 深夜)** | **Phase 4.2a + 4.2b 同框續做** | ✅ **完成**(4 sentinel agent 全接通 NewVisitPage + AI panel) |
-| 4 | Phase 4.2c:ai_drafts table + accept 寫入 | 🟡 下個阿寶 |
+| **3 (6/27 凌晨)** | **Phase 4.2c + 4.2d 同框續做** | ✅ **完成**(ai_drafts table + 寫入 + detail 回看 = ADR-006 完整 loop) |
+| 4 | Phase 5:evolve_heart_layer + Mode A/B 回顧 | 🟡 下個阿寶 |
 | 7 | Phase 5:心臟層演進邏輯 + ai_drafts 三級 | 🟢 |
 | 8 | Phase 6:舊就診回顧頁 + Mode A/B 切換 + AI 重跑 | 🟢 |
 | 9 | Phase 7:教育要點 watchlist + 四幕劇 e2e 跑通 | 🟢 |
