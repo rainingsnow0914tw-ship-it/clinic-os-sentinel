@@ -17,9 +17,11 @@ import {
   runIntake,
   runTriage,
   runEducation,
+  runAudit,
   IntakeResponse,
   TriageResponse,
   EducationResponse,
+  AuditResponse,
 } from '@/services/sentinelApi';
 import './styles.css';
 
@@ -42,13 +44,15 @@ function NewVisitPage() {
   const [temp, setTemp] = useState('');
   const [spo2, setSpo2] = useState('');
   const [freeNotes, setFreeNotes] = useState('');
+  const [rxInput, setRxInput] = useState('');   // Phase 4.2b: 處方一行一個
 
-  // Phase 4.2a: sentinel agent panel
+  // Phase 4.2a/b: sentinel agent panel
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [intakeResult, setIntakeResult] = useState<IntakeResponse | null>(null);
   const [triageResult, setTriageResult] = useState<TriageResponse | null>(null);
   const [educationResult, setEducationResult] = useState<EducationResponse | null>(null);
+  const [auditResult, setAuditResult] = useState<AuditResponse | null>(null);
 
   useEffect(() => {
     if (!patientId) return;
@@ -69,24 +73,32 @@ function NewVisitPage() {
     setIntakeResult(null);
     setTriageResult(null);
     setEducationResult(null);
+    setAuditResult(null);
     try {
       // 並行 call sentinel agents (Qwen 每個 5-15s, 並行加快)
       const hl = patient.heart_layer;
       const workingHypothesis = dx.trim() || cc;
-      const [intakeRes, triageRes, eduRes] = await Promise.allSettled([
+      const rxList = rxInput.split('\n').map((s) => s.trim()).filter(Boolean);
+
+      const [intakeRes, triageRes, eduRes, auditRes] = await Promise.allSettled([
         runIntake(`${cc}${hpi ? '。' + hpi : ''}`, cc),
         runTriage(workingHypothesis, hl.flags, hl.problems, hl.medications),
-        dx.trim() ? runEducation(dx, patient.name) : Promise.reject('skip: dx 空'),
+        dx.trim() ? runEducation(dx, patient.name) : Promise.reject(new Error('skip: dx 空')),
+        rxList.length > 0
+          ? runAudit(rxList, hl.flags, hl.medications, hl.problems)
+          : Promise.reject(new Error('skip: 處方空')),
       ]);
       if (intakeRes.status === 'fulfilled') setIntakeResult(intakeRes.value);
       if (triageRes.status === 'fulfilled') setTriageResult(triageRes.value);
       if (eduRes.status === 'fulfilled') setEducationResult(eduRes.value);
+      if (auditRes.status === 'fulfilled') setAuditResult(auditRes.value);
 
-      // 抓第一個 error 顯示
-      const errs = [intakeRes, triageRes, eduRes]
+      // 抓 error 顯示 (skip 不算錯)
+      const errs = [intakeRes, triageRes, eduRes, auditRes]
         .filter((r) => r.status === 'rejected')
-        .map((r: any) => r.reason?.message ?? String(r.reason));
-      if (errs.length === 3) {
+        .map((r: any) => r.reason?.message ?? String(r.reason))
+        .filter((m) => !m.startsWith('skip:'));
+      if (errs.length === 4) {
         setAiError(`所有 agent 都失敗：${errs.join(' | ')}`);
       } else if (errs.length > 0) {
         setAiError(`部分 agent 失敗：${errs.join(' | ')}`);
@@ -248,6 +260,16 @@ function NewVisitPage() {
         </label>
 
         <label>
+          <span className="field-label">Rx 處方 (一行一個藥, 跑 AI audit 用 / Phase 4.2c 才會寫進 DB)</span>
+          <textarea
+            rows={3}
+            placeholder={'例:\nAmlodipine 5mg qd\nIbuprofen 400mg tid prn'}
+            value={rxInput}
+            onChange={(e) => setRxInput(e.target.value)}
+          />
+        </label>
+
+        <label>
           <span className="field-label">補充筆記 (free notes)</span>
           <textarea
             rows={2}
@@ -274,16 +296,57 @@ function NewVisitPage() {
         </div>
 
         <div style={{ marginTop: 8, color: '#9ca3af', fontSize: 12 }}>
-          Phase 4.2a: 「跑 AI 建議」並行 call sentinel intake/triage/education (Qwen3.7-max),
-          結果在下方 panel。Phase 4.2b 會加 audit + ai_drafts review 寫入。
+          Phase 4.2a/b: 「跑 AI 建議」並行 call sentinel 4 agent (intake/triage/audit/education),
+          Qwen3.7-max 結果在下方 panel。Phase 4.2c 會加 ai_drafts table 寫入 + 接受寫進病歷。
         </div>
       </form>
 
       {/* AI 建議 panel */}
-      {(aiError || intakeResult || triageResult || educationResult) && (
+      {(aiError || intakeResult || triageResult || educationResult || auditResult) && (
         <div className="ai-panel">
           <h3>🤖 Sentinel AI 建議</h3>
           {aiError && <div className="error" style={{ marginBottom: 8 }}>⚠️ {aiError}</div>}
+
+          {auditResult && (
+            <div className="ai-section ai-section-audit">
+              <div className="ai-section-title">
+                🚨 後閘門 (Audit) · {auditResult.model_used}
+              </div>
+              {auditResult.contextual_risks.length > 0 && (
+                <ul className="ai-findings">
+                  {auditResult.contextual_risks.map((r, i) => (
+                    <li key={`ctx-${i}`}>
+                      {r.needs_confirmation && <span className="ai-section-tag" style={{ background: '#fee2e2', color: '#991b1b' }}>⚠ 需確認</span>}
+                      <strong>{r.drug}</strong>: {r.risk}
+                      <div className="ai-refs">triggered by: {r.triggered_by}</div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {auditResult.rule_engine_findings.length > 0 && (
+                <div style={{ marginTop: 6 }}>
+                  <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>規則引擎發現:</div>
+                  <ul className="ai-findings">
+                    {auditResult.rule_engine_findings.map((f, i) => (
+                      <li key={`rule-${i}`}>
+                        <span className="ai-section-tag" style={{ background: '#fef3c7', color: '#92400e' }}>{f.severity}</span>
+                        {f.drug_a} ↔ {f.drug_b}: {f.evidence}
+                        {f.recommendation && <div className="ai-refs">建議: {f.recommendation}</div>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {auditResult.contextual_risks.length === 0 &&
+                auditResult.rule_engine_findings.length === 0 && (
+                  <div style={{ color: '#6b7280', fontSize: 12 }}>(無風險、處方 OK)</div>
+                )}
+              {auditResult.unknowns.length > 0 && (
+                <div className="ai-note">未知藥物: {auditResult.unknowns.join(', ')}</div>
+              )}
+              <div className="ai-note">{auditResult.closing_note}</div>
+            </div>
+          )}
 
           {intakeResult && (
             <div className="ai-section ai-section-intake">

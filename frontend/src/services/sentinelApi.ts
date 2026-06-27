@@ -287,3 +287,18 @@ export async function runEducation(
   });
   return data;
 }
+
+export async function runAudit(
+  newPrescription: string[],
+  flags: HeartFlag[],
+  meds: HeartMedication[],
+  problems: HeartProblem[]
+): Promise<AuditResponse> {
+  const { data } = await apiClient.post<AuditResponse>('/v1/sentinel/audit', {
+    new_prescription: newPrescription,
+    flags: toSentinelFlags(flags),
+    long_term_medications: toSentinelMeds(meds),
+    problems: toSentinelProblems(problems),
+  });
+  return data;
+}

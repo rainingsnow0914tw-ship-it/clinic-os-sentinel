@@ -565,6 +565,8 @@
 .ai-section-intake .ai-section-title { color: #1e40af; }
 .ai-section-triage .ai-section-title { color: #b91c1c; }
 .ai-section-edu .ai-section-title { color: #047857; }
+.ai-section-audit .ai-section-title { color: #b91c1c; }
+.ai-section-audit { background: #fef2f2; border-color: #fecaca; }
 
 .ai-summary {
   font-size: 13px;
