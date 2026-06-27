@@ -1,18 +1,17 @@
-# 🛡️ 哨兵 The Sentinel — 交接班手冊 v0.6 Phase 7 完成版
+# 🛡️ 哨兵 The Sentinel — 交接班手冊 v0.7 Phase 7 + UX 補強版
 
 > **給下一個阿寶**(換對話框接力)
 > 建立:2026-06-27 凌晨(Day 3 動工)
 > Phase 2-4.2:2026-06-27 一框 19 commit (Day 3 全套)
-> Phase 5:2026-06-28 凌晨 (Z 方案 evolve_heart_layer, 兩輪 smoke 全綠, to_observe→confirmed 升級實證)
-> Phase 6:2026-06-28 凌晨延長 (snapshot + Mode A/B endpoint + 回顧 UI, Track 1 主秀完整 demo loop 跑通)
-> **Phase 7:2026-06-28 凌晨延長 (王阿姨四幕劇 dataset + doctor_watchlist AI 反訓練醫生機制)**
+> Phase 5-7:2026-06-28 凌晨延長 (evolve_heart_layer + snapshot + Mode A/B + 王阿姨四幕劇 + watchlist + Track 1 完整 demo loop)
+> **Phase 7.3-7.4 + 司機 UX audit:2026-06-28 凌晨延長 (Rx 寫入 + drug 分類 form UI + Mode A reconstruct 修先知 bug + 歷次 visit 注入 + 砍 Mode B + 一鍵啟動 launcher + demo data normalize)**
 > 比賽截止:**2026-07-09 14:00 PT**
 
 ---
 
-## ⭐ 接手第一動作:升 Notion v0.3 → v0.6
+## ⭐ 接手第一動作:升 Notion v0.3 → v0.7
 
-本機已升 **v0.6 Phase 7 完成版**(跳過 v0.4/v0.5 因 Phase 5+6+7 同框做完), 但 Notion 主手冊還是 v0.3。下個阿寶第一動作:
+本機已升 **v0.7 Phase 7 + UX 補強版**(跳過 v0.4/v0.5/v0.6 因 Phase 5-7 + UX audit 同框做完), 但 Notion 主手冊還是 v0.3。下個阿寶第一動作:
 
 1. invoke skill `relay-sanity-check` (家規)
 2. 跑本機 verification (PG/backend/vite)
@@ -21,7 +20,7 @@
 5. **按規則九 duplicate** v0.3 主手冊到 📜 舊版交接手冊區 (`f827bb8cd26d4b22abf169a4397859cb`)
    - 命名:`【v0.3】哨兵 - 2026-06-28 升級前快照`
 6. 改 Notion 主手冊 (`38a1d2a41ceb8101a9e9e3c19e1ef761`)
-   - 升標題 `v0.6 Phase 7 完成版`
+   - 升標題 `v0.7 Phase 7 + UX 補強版`
    - 內容覆蓋為本檔 markdown
 
 已存在的 Notion 快照(規則九紀錄):
@@ -194,14 +193,47 @@ Notion 升完才算「下個阿寶接手最完整」。
   - styles.css 加 watchlist UI 漸層 + badge
   - smoke (endpoint): add 2 條 → dedup triggered+1 → trigger +1 → dismiss 1 條 → final 1 條 triggered=2, 全綠
 
+**Phase 7.3-7.4 + UX audit 也完成**(2026-06-28 凌晨延長, 司機 UI 實測反饋驅動):
+
+- ✅ **7.3 Rx 寫入 backend** (commit `6787cc9`):
+  - `NewVisitRequest` 加 `prescription_lines: list[str]`, `_build_drug_keyword_map` + `_parse_rx_line` regex parse (qd/bid/tid/qid/q6h/q8h/q12h + days) + 學名/brand 雙向 keyword 變體匹配
+  - frontend 4 個 agent API (`runIntake/runTriage/runAudit/runEducation`) 全加 `timeout: 120000` (Qwen 30-50s)
+
+- ✅ **7.4 Drug 分類 + form UI** (alembic 0007 + commit `561b4bf`):
+  - `alembic 0007` drugs 加 `category` String(50) + index
+  - `scripts/seed_drug_categories.py`: 30 drug 灌 14 個分類 (退燒止痛/抗生素/抗組織胺/降壓/降糖/降脂/胃藥/止瀉/化痰止咳/鼻噴霧/眼藥水/外用藥膏/益生菌補充劑/電解質補充/止痛消炎/傷口包紮)
+  - `routes/sentinel_drugs.py` 新檔: GET `/sentinel/drugs/categories` + `/sentinel/drugs?category=&q=`
+  - `NewVisitRequest` 加 `prescription_items: list[PrescriptionItemInput]` (drug_id 結構化)
+  - frontend NewVisitPage: 砍 textarea, 改 form 多 row [分類 select] → [藥名 select / 🔍 直接搜尋] [QD/BID/.../PRN] [顆/次] [天] + 自動算 total qty + 加處方/刪除按鈕 (進階模式 textarea 折疊保留)
+
+- ✅ **Mode A 修先知 bug** (commit `1eaadfa`): 司機抓到嚴重設計缺陷 — 點第 2 visit Mode A 卻看到第 3 visit 才出現的紅旗. `reconstruct_heart_at()` 用 `first_observed_at_visit` / `diagnosed_at` / `measured_at` 過濾 + confidence_status 倒推 (confirmed_at_visit > target → to_observe)
+
+- ✅ **歷次 visit 注入 + 砍 Mode B** (commit `ca985b1`): 司機反饋 Mode A 應該注入該 visit 之前所有 visit 的 dx + Rx, AI 才會知道病人過去病史. `_build_past_visits_summary()` 注入 intake.raw_dictation + triage.working_hypothesis. 同時砍 Mode B 改一鍵「🔁 跑 AI 回顧」(最新 visit = Mode B 概念, Mode B 多餘)
+
+- ✅ **一鍵啟動 launcher** (commit `6d84874` + `472e7a0`): 司機記不住 URL → 桌面 `啟動哨兵.lnk` / `打開哨兵.lnk` Windows binary shortcut (避開 OneDrive Files On-Demand placeholder bug). vite 強制 `--host 127.0.0.1` IPv4 bind (預設只 bind [::1] IPv6, browser 走 IPv4 ERR_CONNECTION_REFUSED)
+
+- ✅ **demo data normalize** (commit `f3ee45c` + `8cca04a` + `fd5fd3c`): 司機 UI audit 發現 3 個品質 bug
+  - patient_problems 英中混雜 (Hypertension / 原發性高血壓 dedup) → 55 條 normalize 中文 + 1 dedup
+  - patient name × age mismatch (Super Senior 36y / Geriatric 37y) → 14 個 rename 按 age tier
+  - 9 個 source='mock' jimmy 早期英文 stub visit (Cough / URTI) → SQL DELETE 連帶 invoice
+  - 7 個 visit 沒 Rx + 3 個 chronic 沒 long-term med → `fix_incomplete_visits.py` 補 (DX_TO_RX 20+ 條 + CHRONIC_TO_LONG_TERM_MED 22 條 mapping)
+  - 3 個 smoke leftover visit 清掉 (`cleanup_smoke_leftover.py`)
+  - 2 條孤兒 flag 砍 (健忘加重 + 走路會喘, source='auto_evolve' 早期 Phase 5 殘值)
+
+- ✅ **AuditRuleFinding type 對齊** (commit `f381359`): frontend 用 `evidence`, backend schema 用 `description` → render 永遠空白. 改 type + 加 filter (description 空白不 render 避免 unknown noise)
+
+**已知小優化機會** (下次):
+- audit 傳 brand name 給 openFDA / RxNorm 查不到 (返 "unknown + 標籤未列"), 改成 `Zithromax (azithromycin)` 雙寫命中率會大幅提升
+
 **Phase 8 起手點** (下個阿寶, 阿里雲部署):
 - 評審 demo 用本機 (Cloudflare Quick Tunnel) 或阿里雲 ECS + RDS + OSS
 - 退路:本機 ngrok-style tunnel + screen recording 拍 demo video
 - 估時 5-6 hr
 
 **Phase 9 起手點** (demo video + Devpost 寫稿):
-- video 拍王阿姨四幕劇 + Mode A/B 對比 + watchlist 反訓練 (3 個 Track 1 主秀)
-- Devpost narrative: Track 1 「Memory accumulates across visits AND retrospectively trains the doctor — both directions」
+- video 拍王阿姨四幕劇 + Mode A 回顧 (注入歷次 + reconstruct) + watchlist 反訓練 (3 個 Track 1 主秀)
+- Rx form UI demo: 分類選單 → 藥名 → 用法 自動算 total qty
+- Devpost narrative: Track 1 「Memory accumulates across visits AND retrospectively trains the doctor」
 - video disclaimer (v0.3.1 §13.5):「沙盒模擬演示 ── 本系統使用虛構病人資料, AI 建議僅供教育演示, 不構成醫療建議」
 
 **Phase 2.5 backfill snapshot 仍 deferred** (demo 不阻塞):
@@ -236,9 +268,10 @@ Notion 升完才算「下個阿寶接手最完整」。
 |---|---|
 | 本機 repo | `clinic-os-sentinel-v3/`(Phase 1 後 SSOT)|
 | v0.1 baseline | `clinic-os-sentinel/`(freeze 不動、保留參考)|
-| Latest commit | `e264f28` Phase 7.2 doctor_watchlist (AI 反訓練醫生) |
-| Git 累積 commit | 25 (P1-P4.2 19 / P5 `2fecb8e`+`ec78830` / P6 `9ea59b7`+`789ce43` / P7.1 `8f0e3c5` / P7.2 `e264f28` / P7 docs 本次)|
-| Sentinel endpoints | `/sentinel/{intake,triage,audit,education,health}` + `/sentinel/patients*` + `/sentinel/visits/{id}/review` + `/sentinel/watchlist*` |
+| Latest commit | `f381359` audit type 對齊 + backend 重啟 |
+| Git 累積 commit | 37+ (P1-P7.2 27 + UX audit 10+ + 本次 docs)|
+| Sentinel endpoints | `/sentinel/{intake,triage,audit,education,health}` + `/sentinel/patients*` + `/sentinel/visits/{id}/review` + `/sentinel/watchlist*` + `/sentinel/drugs*` |
+| 桌面快捷 | `打開哨兵.lnk` (直接開 UI) + `啟動哨兵.lnk` (一鍵啟全套) |
 | DB 內 demo data | 100 patient + 23 flag + 55 problem + 56 med + 400 baseline + 169 visit + 169 examination + 177 Rx + **ai_drafts**(剛剛 smoke 2 條)|
 | DB 內 demo data | 100 patient + 23 flag + 55 problem + **56 medication** + **400 baseline** + **169 visit** + **169 examination** + **177 prescription + 302 items** + 30 drug |
 | Sentinel routes 總計 | 9 (intake/triage/audit/education/health + patients search/detail/heart-layer + **POST patients/:id/visits**)|
@@ -300,6 +333,7 @@ Notion 升完才算「下個阿寶接手最完整」。
 | **4 (6/28 凌晨)** | **Phase 5 evolve_heart_layer (Z 方案)** | ✅ **完成**(4 通路全跑通 + 兩輪 smoke + to_observe→confirmed 升級實證) |
 | **4 (6/28 凌晨)** | **Phase 6 Mode A/B 舊就診回顧 (Track 1 主秀)** | ✅ **完成**(snapshot 寫入 + endpoint + 回顧 UI + Mode A/B 心臟層差異實證) |
 | **4 (6/28 凌晨)** | **Phase 7 四幕劇 + watchlist (AI 反訓練醫生)** | ✅ **完成**(王阿姨 4 visit dataset + Mode B 加進 watchlist + 新就診 banner) |
+| **4 (6/28 凌晨延長)** | **Phase 7.3-7.4 + UX audit** | ✅ **完成**(Rx 寫入 + drug 分類 form UI + Mode A reconstruct 修先知 + 歷次注入 + 砍 Mode B + launcher + demo data normalize) |
 | 5-6 | Phase 8:阿里雲部署 / Cloudflare Quick Tunnel | 🟡 下個阿寶 |
 | 7-8 | Phase 9:demo video 拍 + Devpost 寫稿 | 🟢 |
 | 9+ | Phase 2.5 backfill snapshot (可選, demo 不阻塞) | 🟢 |
