@@ -91,6 +91,14 @@ export interface PrescriptionItem {
   total_quantity?: number | null;
 }
 
+export interface AiDraftSummary {
+  id: string;
+  agent_type: 'intake' | 'triage' | 'audit' | 'education';
+  status: string;
+  payload: any;
+  accepted_at?: string | null;
+}
+
 export interface VisitTimelineItem {
   id: string;
   visit_date: string;
@@ -104,6 +112,7 @@ export interface VisitTimelineItem {
   xray_findings?: string | null;
   ecg_findings?: string | null;
   prescription_items?: PrescriptionItem[];   // Phase 2.4d
+  ai_drafts?: AiDraftSummary[];               // Phase 4.2d
 }
 
 export interface PatientDetail {
@@ -131,6 +140,11 @@ export async function getPatientDetail(patientId: string): Promise<PatientDetail
 }
 
 // Phase 4.1 新就診
+export interface AiDraftInput {
+  agent_type: 'intake' | 'triage' | 'audit' | 'education';
+  payload: Record<string, any>;
+}
+
 export interface NewVisitInput {
   chief_complaint: string;
   hpi?: string;
@@ -146,6 +160,7 @@ export interface NewVisitInput {
     oxygen_saturation?: number;
   };
   free_notes?: string;
+  ai_drafts?: AiDraftInput[];  // Phase 4.2c
 }
 
 export interface NewVisitResponse {
@@ -153,6 +168,7 @@ export interface NewVisitResponse {
   patient_id: string;
   visit_date: string;
   status: string;
+  ai_drafts_saved?: number;
 }
 
 export async function createVisit(

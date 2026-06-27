@@ -127,6 +127,13 @@ function NewVisitPage() {
       if (temp) vs.temperature_c = parseFloat(temp);
       if (spo2) vs.oxygen_saturation = parseInt(spo2);
 
+      // Phase 4.2c: 把 AI panel 結果 dump 成 ai_drafts (status='accepted_with_visit')
+      const aiDrafts: { agent_type: 'intake' | 'triage' | 'audit' | 'education'; payload: any }[] = [];
+      if (intakeResult) aiDrafts.push({ agent_type: 'intake', payload: intakeResult });
+      if (triageResult) aiDrafts.push({ agent_type: 'triage', payload: triageResult });
+      if (auditResult) aiDrafts.push({ agent_type: 'audit', payload: auditResult });
+      if (educationResult) aiDrafts.push({ agent_type: 'education', payload: educationResult });
+
       const res = await createVisit(patientId, {
         chief_complaint: cc,
         hpi: hpi || undefined,
@@ -134,6 +141,7 @@ function NewVisitPage() {
         diagnosis: dx || undefined,
         vital_signs: Object.keys(vs).length ? vs : undefined,
         free_notes: freeNotes || undefined,
+        ai_drafts: aiDrafts.length > 0 ? aiDrafts : undefined,
       });
       // 寫進 DB 完成 → 回 detail 頁
       navigate(`/sentinel/patients/${patientId}?new_visit=${res.visit_id}`);

@@ -568,6 +568,59 @@
 .ai-section-audit .ai-section-title { color: #b91c1c; }
 .ai-section-audit { background: #fef2f2; border-color: #fecaca; }
 
+/* Phase 4.2d: visit 對應 ai_drafts (折疊) */
+.ai-drafts-record {
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: #faf5ff;
+  border: 1px dashed #c4b5fd;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.ai-drafts-record summary {
+  cursor: pointer;
+  color: #6d28d9;
+  font-weight: 500;
+  padding: 2px 0;
+}
+
+.ai-draft-row {
+  margin-top: 6px;
+  padding: 6px;
+  background: white;
+  border-radius: 3px;
+  display: flex;
+  gap: 8px;
+}
+
+.ai-draft-tag {
+  flex-shrink: 0;
+  width: 60px;
+  font-size: 11px;
+  color: #6d28d9;
+  font-weight: 600;
+  padding-top: 2px;
+}
+
+.ai-draft-text {
+  color: #374151;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.ai-draft-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ai-draft-list li {
+  padding: 2px 0;
+  font-size: 12px;
+  color: #1f2937;
+}
+
 .ai-summary {
   font-size: 13px;
   color: #374151;

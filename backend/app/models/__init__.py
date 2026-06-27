@@ -51,6 +51,9 @@ from app.models.patient_problem import PatientProblem, ControlStatus, ProblemSou
 from app.models.visit_examination import VisitExamination
 from app.models.heart_layer_snapshot import HeartLayerSnapshot
 
+# Phase 4.2c ADR-006
+from app.models.ai_draft import AiDraft, AgentType, AiDraftStatus
+
 __all__ = [
     # Base
     "Base",
@@ -97,4 +100,8 @@ __all__ = [
     # v0.3.1 新表
     "VisitExamination",
     "HeartLayerSnapshot",
+    # Phase 4.2c
+    "AiDraft",
+    "AgentType",
+    "AiDraftStatus",
 ]

@@ -270,6 +270,65 @@ function PatientDetailPage() {
                     ))}
                   </div>
                 )}
+
+                {/* Phase 4.2d: 當時 AI 建議 (折疊) */}
+                {v.ai_drafts && v.ai_drafts.length > 0 && (
+                  <details className="ai-drafts-record">
+                    <summary>📋 當時 AI 建議 ({v.ai_drafts.length} 條 / {v.ai_drafts[0].status})</summary>
+                    {v.ai_drafts.map((d) => {
+                      const p = d.payload || {};
+                      return (
+                        <div key={d.id} className="ai-draft-row">
+                          <div className="ai-draft-tag">{d.agent_type}</div>
+                          {d.agent_type === 'intake' && (
+                            <div>
+                              {p.summary && <div className="ai-draft-text">{p.summary}</div>}
+                              {p.findings && p.findings.length > 0 && (
+                                <ul className="ai-draft-list">
+                                  {p.findings.map((f: any, i: number) => (
+                                    <li key={i}><span className="ai-section-tag">{f.section}</span>{f.text}</li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          )}
+                          {d.agent_type === 'triage' && (
+                            <div>
+                              {p.has_conflict && <div className="ai-conflict">⚠ {p.conflict_summary}</div>}
+                              {p.differentials && p.differentials.length > 0 && (
+                                <ul className="ai-draft-list">
+                                  {p.differentials.map((diff: any, i: number) => (
+                                    <li key={i}><strong>{diff.name}</strong>: {diff.reason}</li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          )}
+                          {d.agent_type === 'audit' && (
+                            <div>
+                              {p.contextual_risks && p.contextual_risks.length > 0 && (
+                                <ul className="ai-draft-list">
+                                  {p.contextual_risks.map((r: any, i: number) => (
+                                    <li key={i}>
+                                      {r.needs_confirmation && <span className="ai-section-tag" style={{ background: '#fee2e2', color: '#991b1b' }}>⚠</span>}
+                                      <strong>{r.drug}</strong>: {r.risk}
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                              {(!p.contextual_risks || p.contextual_risks.length === 0) && (
+                                <div className="ai-draft-text">(無風險)</div>
+                              )}
+                            </div>
+                          )}
+                          {d.agent_type === 'education' && (
+                            <div className="ai-draft-text" style={{ whiteSpace: 'pre-wrap' }}>{p.advice}</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </details>
+                )}
               </div>
             );
           })

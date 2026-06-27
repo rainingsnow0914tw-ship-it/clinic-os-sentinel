@@ -36,6 +36,7 @@ from app.models import User, VisitExamination as _VEModel
 
 from app.core.database import SessionLocal
 from app.models import (
+    AiDraft,
     Clinic,
     Drug,
     Patient,
@@ -156,6 +157,15 @@ class PrescriptionItemSummary(BaseModel):
     total_quantity: int | None = None
 
 
+class AiDraftSummary(BaseModel):
+    """Phase 4.2d: visit 對應的 ai_drafts (含當時 AI panel 結果, Mode A/B 回顧用)"""
+    id: UUID
+    agent_type: str
+    status: str
+    payload: dict
+    accepted_at: str | None = None
+
+
 class VisitTimelineItem(BaseModel):
     id: UUID
     visit_date: str
@@ -171,6 +181,8 @@ class VisitTimelineItem(BaseModel):
     ecg_findings: str | None = None
     # Phase 2.4d 處方
     prescription_items: list[PrescriptionItemSummary] = []
+    # Phase 4.2d ai_drafts (當時 AI 建議)
+    ai_drafts: list[AiDraftSummary] = []
 
 
 class PatientDetailResponse(BaseModel):
@@ -327,11 +339,26 @@ def get_patient_detail(
         .order_by(Visit.visit_date.desc())
     ).all()
 
-    # 一次撈所有 visit 的 examination + prescription (避免 N+1)
+    # 一次撈所有 visit 的 examination + prescription + ai_drafts (避免 N+1)
     visit_ids = [v.id for v in visits]
     exam_by_vid: dict[UUID, "VisitExamination"] = {}
     rx_by_vid: dict[UUID, list[PrescriptionItemSummary]] = {}
+    drafts_by_vid: dict[UUID, list[AiDraftSummary]] = {}
     if visit_ids:
+        for draft in db.scalars(
+            select(AiDraft)
+            .where(AiDraft.visit_id.in_(visit_ids))
+            .order_by(AiDraft.created_at)
+        ).all():
+            drafts_by_vid.setdefault(draft.visit_id, []).append(
+                AiDraftSummary(
+                    id=draft.id,
+                    agent_type=draft.agent_type,
+                    status=draft.status,
+                    payload=draft.payload_json,
+                    accepted_at=draft.accepted_at.isoformat() if draft.accepted_at else None,
+                )
+            )
         from app.models import VisitExamination as _VE
         for e in db.scalars(select(_VE).where(_VE.visit_id.in_(visit_ids))).all():
             exam_by_vid[e.visit_id] = e
@@ -383,6 +410,7 @@ def get_patient_detail(
                 xray_findings=e.xray_findings if e else None,
                 ecg_findings=e.ecg_findings if e else None,
                 prescription_items=rx_by_vid.get(v.id, []),
+                ai_drafts=drafts_by_vid.get(v.id, []),
             )
         )
 
@@ -424,6 +452,12 @@ class VitalSignsInput(BaseModel):
     oxygen_saturation: int | None = None
 
 
+class AiDraftInput(BaseModel):
+    """Phase 4.2c: 醫師按完成就診時帶上來的 AI panel 結果。"""
+    agent_type: str   # intake / triage / audit / education
+    payload: dict     # full agent response
+
+
 class NewVisitRequest(BaseModel):
     chief_complaint: str = Field(..., min_length=1)
     hpi: str | None = None
@@ -432,6 +466,7 @@ class NewVisitRequest(BaseModel):
     visit_date: str | None = None   # ISO format, 預設 now
     vital_signs: VitalSignsInput | None = None
     free_notes: str | None = None
+    ai_drafts: list[AiDraftInput] = []   # Phase 4.2c: AI panel 結果一起寫
 
 
 class NewVisitResponse(BaseModel):
@@ -439,6 +474,7 @@ class NewVisitResponse(BaseModel):
     patient_id: UUID
     visit_date: str
     status: str
+    ai_drafts_saved: int = 0
 
 
 @router.post(
@@ -524,6 +560,31 @@ def create_visit(
         )
         db.add(exam)
 
+    # 先 flush visit + examination, 確保 ai_drafts FK to visit_id 可解析
+    db.flush()
+
+    # Phase 4.2c: 一起寫 ai_drafts (status='accepted_with_visit')
+    drafts_saved = 0
+    if payload.ai_drafts:
+        allowed_agents = {"intake", "triage", "audit", "education"}
+        for d in payload.ai_drafts:
+            if d.agent_type not in allowed_agents:
+                continue
+            draft = AiDraft(
+                id=uuid4(),
+                clinic_id=patient.clinic_id,
+                patient_id=patient.id,
+                visit_id=visit_uuid,
+                agent_type=d.agent_type,
+                payload_json=d.payload,
+                status="accepted_with_visit",
+                accepted_at=vdate,
+                source="manual",
+                is_demo_data=False,
+            )
+            db.add(draft)
+            drafts_saved += 1
+
     db.commit()
 
     return NewVisitResponse(
@@ -531,4 +592,5 @@ def create_visit(
         patient_id=patient.id,
         visit_date=vdate.isoformat(),
         status="completed",
+        ai_drafts_saved=drafts_saved,
     )
