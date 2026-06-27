@@ -37,6 +37,7 @@ from app.routes import (
     reports_router,
     sentinel_router,
     sentinel_patients_router,
+    sentinel_review_router,
 )
 
 # ============================================================
@@ -143,3 +144,4 @@ app.include_router(agent_tasks_router,  prefix=prefix, tags=["agent_tasks"])
 app.include_router(reports_router,      prefix=prefix, tags=["reports"])
 app.include_router(sentinel_router,     prefix=prefix, tags=["sentinel"])
 app.include_router(sentinel_patients_router, prefix=prefix, tags=["sentinel-patients"])
+app.include_router(sentinel_review_router, prefix=prefix, tags=["sentinel-review"])

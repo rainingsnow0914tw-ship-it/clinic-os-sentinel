@@ -318,3 +318,35 @@ export async function runAudit(
   });
   return data;
 }
+
+// ─── Phase 6: Mode A/B review ─────────────────────────────────
+
+export type ReviewModeKind = 'at_the_time' | 'hindsight';
+
+export interface ReviewModeInfo {
+  mode: ReviewModeKind;
+  heart_layer_source: string;   // snapshot:before_visit / snapshot:after_visit / fallback:current
+  summary_text: string;
+}
+
+export interface ReviewResponse {
+  visit_id: string;
+  mode: ReviewModeInfo;
+  intake: IntakeResponse | null;
+  triage: TriageResponse | null;
+  audit: AuditResponse | null;
+  education: EducationResponse | null;
+  skipped: string[];
+  mode_disclaimer: string;
+}
+
+export async function reviewVisit(
+  visitId: string,
+  mode: ReviewModeKind
+): Promise<ReviewResponse> {
+  const { data } = await apiClient.post<ReviewResponse>(
+    `/v1/sentinel/visits/${visitId}/review`,
+    { mode }
+  );
+  return data;
+}

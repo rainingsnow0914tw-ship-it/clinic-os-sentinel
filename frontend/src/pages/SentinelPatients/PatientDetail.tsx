@@ -12,14 +12,29 @@
  */
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { getPatientDetail, PatientDetail } from '@/services/sentinelApi';
+import {
+  getPatientDetail,
+  PatientDetail,
+  reviewVisit,
+  ReviewModeKind,
+  ReviewResponse,
+} from '@/services/sentinelApi';
 import './styles.css';
+
+interface ReviewState {
+  loading?: boolean;
+  result?: ReviewResponse;
+  mode?: ReviewModeKind;
+  error?: string;
+}
 
 function PatientDetailPage() {
   const { patientId } = useParams<{ patientId: string }>();
   const [detail, setDetail] = useState<PatientDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Phase 6: per-visit review state (Mode A/B 並存, switch 蓋掉前一個)
+  const [reviewMap, setReviewMap] = useState<Record<string, ReviewState>>({});
 
   useEffect(() => {
     if (!patientId) return;
@@ -29,6 +44,19 @@ function PatientDetailPage() {
       .catch((e) => setError(e?.message ?? '載入失敗'))
       .finally(() => setLoading(false));
   }, [patientId]);
+
+  async function handleReview(visitId: string, mode: ReviewModeKind) {
+    setReviewMap((m) => ({ ...m, [visitId]: { loading: true, mode } }));
+    try {
+      const result = await reviewVisit(visitId, mode);
+      setReviewMap((m) => ({ ...m, [visitId]: { loading: false, result, mode } }));
+    } catch (e: any) {
+      setReviewMap((m) => ({
+        ...m,
+        [visitId]: { loading: false, mode, error: e?.message ?? '回顧失敗' },
+      }));
+    }
+  }
 
   if (loading) return <div className="sentinel-page"><div className="loading">載入中...</div></div>;
   if (error)   return <div className="sentinel-page"><div className="error">⚠️ {error}</div></div>;
@@ -271,6 +299,42 @@ function PatientDetailPage() {
                   </div>
                 )}
 
+                {/* Phase 6: Mode A/B 回顧 (Track 1 MemoryAgent 主秀) */}
+                <div className="review-section">
+                  <div className="review-header">
+                    🔁 <strong>AI 回顧此次就診</strong>
+                    <span className="review-hint">(對比當時看到 vs 現在看到的差異)</span>
+                  </div>
+                  <div className="review-buttons">
+                    <button
+                      className="btn-review btn-mode-a"
+                      onClick={() => handleReview(v.id, 'at_the_time')}
+                      disabled={reviewMap[v.id]?.loading}
+                    >
+                      🅰️ Mode A: 當時可獲得的資訊
+                    </button>
+                    <button
+                      className="btn-review btn-mode-b"
+                      onClick={() => handleReview(v.id, 'hindsight')}
+                      disabled={reviewMap[v.id]?.loading}
+                    >
+                      🅱️ Mode B: 事後諸葛 (不究責)
+                    </button>
+                  </div>
+
+                  {reviewMap[v.id]?.loading && (
+                    <div className="review-loading">
+                      ⏳ 跑 4 agent 並行中... (Qwen3.7-max, 約 5-45 秒)
+                    </div>
+                  )}
+                  {reviewMap[v.id]?.error && (
+                    <div className="review-error">⚠️ {reviewMap[v.id].error}</div>
+                  )}
+                  {reviewMap[v.id]?.result && !reviewMap[v.id]?.loading && (
+                    <ReviewResultPanel result={reviewMap[v.id]!.result!} />
+                  )}
+                </div>
+
                 {/* Phase 4.2d: 當時 AI 建議 (折疊) */}
                 {v.ai_drafts && v.ai_drafts.length > 0 && (
                   <details className="ai-drafts-record">
@@ -333,6 +397,128 @@ function PatientDetailPage() {
             );
           })
         )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Phase 6: Mode A/B 回顧結果 panel.
+ *
+ * 上半: mode header + heart_layer_source + summary
+ * 中段: 4 agent panel (intake/triage/audit/education, 可能 null)
+ * 下緣: mode_disclaimer (Mode B 提醒不究責)
+ */
+function ReviewResultPanel({ result }: { result: ReviewResponse }) {
+  const mode = result.mode;
+  const modeBadge = mode.mode === 'at_the_time' ? 'Mode A' : 'Mode B';
+  const modeColor = mode.mode === 'at_the_time' ? '#1d4ed8' : '#b45309';
+  return (
+    <div className="review-result">
+      <div className="review-mode-header" style={{ borderLeftColor: modeColor }}>
+        <div>
+          <span className="review-mode-badge" style={{ background: modeColor }}>
+            {modeBadge}
+          </span>
+          <span className="review-source">心臟層來源: {mode.heart_layer_source}</span>
+        </div>
+        {mode.summary_text && (
+          <div className="review-summary">
+            <strong>AI 看到的心臟層摘要:</strong>
+            <pre>{mode.summary_text}</pre>
+          </div>
+        )}
+      </div>
+
+      {result.intake && (
+        <div className="review-agent intake">
+          <div className="review-agent-title">🔍 入口偵查官 (intake)</div>
+          {result.intake.summary && <div>{result.intake.summary}</div>}
+          {result.intake.findings && result.intake.findings.length > 0 && (
+            <ul>
+              {result.intake.findings.map((f: any, i: number) => (
+                <li key={i}>
+                  <span className="ai-section-tag">{f.section}</span>{f.text}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {result.triage && (
+        <div className="review-agent triage">
+          <div className="review-agent-title">⚖️ 前閘門 (triage)</div>
+          {result.triage.has_conflict && (
+            <div className="ai-conflict">⚠ {result.triage.conflict_summary}</div>
+          )}
+          {result.triage.differentials && result.triage.differentials.length > 0 && (
+            <ul>
+              {result.triage.differentials.map((d: any, i: number) => (
+                <li key={i}>
+                  <strong>{d.diagnosis || d.name}</strong>: {d.reasoning || d.reason}
+                  {d.source_url && (
+                    <> · <a href={d.source_url} target="_blank" rel="noreferrer">來源</a></>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {result.audit && (
+        <div className="review-agent audit">
+          <div className="review-agent-title">🛡️ 後閘門 (audit)</div>
+          {result.audit.rule_engine_findings && result.audit.rule_engine_findings.length > 0 && (
+            <>
+              <div className="review-agent-subtitle">規則引擎:</div>
+              <ul>
+                {result.audit.rule_engine_findings.map((r: any, i: number) => (
+                  <li key={i}>
+                    <strong>{r.drug_a} × {r.drug_b}</strong> ({r.severity}): {r.description || r.evidence}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          {result.audit.contextual_risks && result.audit.contextual_risks.length > 0 && (
+            <>
+              <div className="review-agent-subtitle">情境風險:</div>
+              <ul>
+                {result.audit.contextual_risks.map((r: any, i: number) => (
+                  <li key={i}>
+                    {r.needs_confirmation && (
+                      <span className="ai-section-tag" style={{ background: '#fee2e2', color: '#991b1b' }}>⚠</span>
+                    )}
+                    <strong>{r.drug}</strong>: {r.risk}
+                    {r.triggered_by && <> (觸發: {r.triggered_by})</>}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          {result.audit.unknowns && result.audit.unknowns.length > 0 && (
+            <div>成分不明: {result.audit.unknowns.join(', ')}</div>
+          )}
+        </div>
+      )}
+
+      {result.education && (
+        <div className="review-agent education">
+          <div className="review-agent-title">📚 衛教 (education)</div>
+          <div style={{ whiteSpace: 'pre-wrap' }}>{result.education.advice}</div>
+        </div>
+      )}
+
+      {result.skipped && result.skipped.length > 0 && (
+        <div className="review-skipped">
+          ⓘ 略過: {result.skipped.join(' / ')}
+        </div>
+      )}
+
+      <div className="review-disclaimer" style={{ borderLeftColor: modeColor }}>
+        💡 {result.mode_disclaimer}
       </div>
     </div>
   );

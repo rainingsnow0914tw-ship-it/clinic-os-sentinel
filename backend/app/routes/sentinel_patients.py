@@ -48,7 +48,10 @@ from app.models import (
     PrescriptionItem,
     Visit,
 )
-from app.services.heart_evolution import evolve_heart_layer_after_visit
+from app.services.heart_evolution import (
+    evolve_heart_layer_after_visit,
+    take_heart_layer_snapshot,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -574,6 +577,9 @@ def create_visit(
     # 先 flush visit + examination, 確保 ai_drafts FK to visit_id 可解析
     db.flush()
 
+    # Phase 6.1: visit 起始拍 before_visit snapshot (Mode A 依賴)
+    take_heart_layer_snapshot(db, visit, "before_visit")
+
     # Phase 4.2c: 一起寫 ai_drafts (status='accepted_with_visit')
     drafts_saved = 0
     if payload.ai_drafts:
@@ -601,6 +607,10 @@ def create_visit(
 
     # Phase 5: visit 完成時自動演進心臟層 (problems / medications / flags / baselines)
     evolution = evolve_heart_layer_after_visit(db, visit)
+
+    # Phase 6.1: evolve 完之後拍 after_visit snapshot
+    db.flush()  # 確保 evolve 寫入的 4 心臟表新條目可被 serialize 撈到
+    take_heart_layer_snapshot(db, visit, "after_visit")
 
     db.commit()
 

@@ -33,6 +33,7 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     AiDraft,
+    HeartLayerSnapshot,
     PatientBaseline,
     PatientFlag,
     PatientMedication,
@@ -496,3 +497,168 @@ def _evolve_baselines(
         added += 1
 
     return added
+
+
+# ============================================================
+# Phase 6: snapshot 寫入 (Mode A 「當時可獲得的資訊重審」依賴)
+# ============================================================
+def _serialize_heart_layer(db: Session, patient_id: uuid.UUID) -> dict:
+    """4 心臟表當下狀態 -> 4 個 list[dict] + plain text summary。"""
+    flags = db.scalars(
+        select(PatientFlag).where(PatientFlag.patient_id == patient_id)
+    ).all()
+    problems = db.scalars(
+        select(PatientProblem).where(PatientProblem.patient_id == patient_id)
+    ).all()
+    medications = db.scalars(
+        select(PatientMedication).where(PatientMedication.patient_id == patient_id)
+    ).all()
+    baselines = db.scalars(
+        select(PatientBaseline).where(PatientBaseline.patient_id == patient_id)
+    ).all()
+
+    flags_json = [
+        {
+            "id": str(f.id),
+            "flag_type": f.flag_type,
+            "severity": f.severity,
+            "content": f.content,
+            "confidence_status": f.confidence_status,
+            "flag_source": f.flag_source,
+            "valid_until": f.valid_until.isoformat() if f.valid_until else None,
+        }
+        for f in flags
+    ]
+    problems_json = [
+        {
+            "id": str(p.id),
+            "problem_name": p.problem_name,
+            "icd10_code": p.icd10_code,
+            "control_status": p.control_status,
+            "problem_source": p.problem_source,
+            "diagnosed_at": p.diagnosed_at.isoformat() if p.diagnosed_at else None,
+        }
+        for p in problems
+    ]
+    medications_json = [
+        {
+            "id": str(m.id),
+            "medication_name": m.medication_name,
+            "category": m.category,
+            "dosage": m.dosage,
+            "frequency": m.frequency,
+            "is_active": m.is_active,
+        }
+        for m in medications
+    ]
+    baselines_json = [
+        {
+            "id": str(b.id),
+            "category": b.category,
+            "value_text": b.value_text,
+            "measured_at": b.measured_at.isoformat() if b.measured_at else None,
+        }
+        for b in baselines
+    ]
+
+    confirmed_flags = [f for f in flags if f.confidence_status == "confirmed"]
+    summary_lines = [
+        f"心臟層摘要: {len(confirmed_flags)} 紅旗確認 / {len(flags) - len(confirmed_flags)} 待觀察 / {len(problems)} 慢性病 / {len(medications)} 長期用藥 / {len(baselines)} baseline",
+    ]
+    if confirmed_flags:
+        summary_lines.append(
+            "確認紅旗: " + "; ".join(f.content[:40] for f in confirmed_flags[:5])
+        )
+    if problems:
+        summary_lines.append(
+            "慢性病: " + ", ".join(p.problem_name for p in problems[:8])
+        )
+    if medications:
+        active_meds = [m for m in medications if m.is_active]
+        if active_meds:
+            summary_lines.append(
+                "長期用藥: " + ", ".join(m.medication_name for m in active_meds[:8])
+            )
+
+    return {
+        "flags_json": flags_json,
+        "problems_json": problems_json,
+        "medications_json": medications_json,
+        "baselines_json": baselines_json,
+        "summary_text": "\n".join(summary_lines),
+    }
+
+
+def take_heart_layer_snapshot(
+    db: Session, visit: Visit, snapshot_type: str
+) -> HeartLayerSnapshot:
+    """序列化當下 4 心臟表狀態進 heart_layer_snapshots 表。
+
+    snapshot_type: 'before_visit' | 'after_visit'
+    冪等: 同 visit + 同 type 已存在則 skip (return 既有)
+    """
+    existing = db.scalars(
+        select(HeartLayerSnapshot).where(
+            HeartLayerSnapshot.visit_id == visit.id,
+            HeartLayerSnapshot.snapshot_type == snapshot_type,
+        )
+    ).first()
+    if existing:
+        return existing
+
+    payload = _serialize_heart_layer(db, visit.patient_id)
+    snap = HeartLayerSnapshot(
+        id=uuid.uuid4(),
+        clinic_id=visit.clinic_id,
+        patient_id=visit.patient_id,
+        visit_id=visit.id,
+        snapshot_type=snapshot_type,
+        problems_json=payload["problems_json"],
+        medications_json=payload["medications_json"],
+        flags_json=payload["flags_json"],
+        baselines_json=payload["baselines_json"],
+        summary_text=payload["summary_text"],
+        source="agent",
+        is_demo_data=False,
+    )
+    db.add(snap)
+    return snap
+
+
+def load_heart_layer_at_visit(
+    db: Session, visit: Visit, prefer: str = "before_visit"
+) -> dict:
+    """Mode A 用: 拿該 visit 的 snapshot heart layer (含 4 list + summary)。
+
+    fallback 順序:
+    1. 該 visit + prefer snapshot
+    2. 該 visit + 另一個 snapshot
+    3. 當下心臟層 (reconstruct fallback, 不準但跑得通)
+    """
+    snap = db.scalars(
+        select(HeartLayerSnapshot).where(
+            HeartLayerSnapshot.visit_id == visit.id,
+            HeartLayerSnapshot.snapshot_type == prefer,
+        )
+    ).first()
+    if not snap:
+        other = "after_visit" if prefer == "before_visit" else "before_visit"
+        snap = db.scalars(
+            select(HeartLayerSnapshot).where(
+                HeartLayerSnapshot.visit_id == visit.id,
+                HeartLayerSnapshot.snapshot_type == other,
+            )
+        ).first()
+    if snap:
+        return {
+            "flags_json": snap.flags_json,
+            "problems_json": snap.problems_json,
+            "medications_json": snap.medications_json,
+            "baselines_json": snap.baselines_json,
+            "summary_text": snap.summary_text or "",
+            "source": f"snapshot:{snap.snapshot_type}",
+        }
+    # fallback: 沒拍到 (舊 demo data) -> 反推當下心臟層
+    payload = _serialize_heart_layer(db, visit.patient_id)
+    payload["source"] = "fallback:current"
+    return payload
