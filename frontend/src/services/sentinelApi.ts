@@ -227,8 +227,10 @@ export interface AuditRuleFinding {
   drug_a: string;
   drug_b: string;
   severity: string;
-  evidence: string;
-  recommendation?: string;
+  description: string;         // backend schema 用 description
+  source?: string;
+  source_url?: string | null;
+  needs_confirmation?: boolean;
 }
 export interface AuditResponse {
   rule_engine_findings: AuditRuleFinding[];

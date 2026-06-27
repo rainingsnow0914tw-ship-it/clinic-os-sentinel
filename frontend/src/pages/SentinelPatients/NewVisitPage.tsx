@@ -560,17 +560,23 @@ function NewVisitPage() {
                   ))}
                 </ul>
               )}
-              {auditResult.rule_engine_findings.length > 0 && (
+              {auditResult.rule_engine_findings.filter((f) => f.description && f.description.trim()).length > 0 && (
                 <div style={{ marginTop: 6 }}>
                   <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>規則引擎發現:</div>
                   <ul className="ai-findings">
-                    {auditResult.rule_engine_findings.map((f, i) => (
-                      <li key={`rule-${i}`}>
-                        <span className="ai-section-tag" style={{ background: '#fef3c7', color: '#92400e' }}>{f.severity}</span>
-                        {f.drug_a} ↔ {f.drug_b}: {f.evidence}
-                        {f.recommendation && <div className="ai-refs">建議: {f.recommendation}</div>}
-                      </li>
-                    ))}
+                    {auditResult.rule_engine_findings
+                      .filter((f) => f.description && f.description.trim())
+                      .map((f, i) => (
+                        <li key={`rule-${i}`}>
+                          <span className="ai-section-tag" style={{ background: '#fef3c7', color: '#92400e' }}>{f.severity}</span>
+                          {f.drug_a} ↔ {f.drug_b}: {f.description}
+                          {f.source_url && (
+                            <div className="ai-refs">
+                              · <a href={f.source_url} target="_blank" rel="noreferrer">來源</a>
+                            </div>
+                          )}
+                        </li>
+                      ))}
                   </ul>
                 </div>
               )}
