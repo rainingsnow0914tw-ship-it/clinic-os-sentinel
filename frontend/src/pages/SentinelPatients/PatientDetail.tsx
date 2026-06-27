@@ -38,7 +38,12 @@ function PatientDetailPage() {
 
   return (
     <div className="sentinel-page">
-      <Link to="/sentinel/patients" className="back-link">← 回搜尋</Link>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <Link to="/sentinel/patients" className="back-link">← 回搜尋</Link>
+        <Link to={`/sentinel/patients/${detail.id}/visit/new`} className="btn-primary" style={{ textDecoration: 'none' }}>
+          ➕ 新就診
+        </Link>
+      </div>
 
       <div className="detail-header">
         <div className="name">

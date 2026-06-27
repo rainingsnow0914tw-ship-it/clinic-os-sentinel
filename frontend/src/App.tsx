@@ -14,6 +14,7 @@ import ReportsPage from '@/pages/ReportsPage';
 import SettingsPage from '@/pages/SettingsPage';
 import SentinelPatientsPage from '@/pages/SentinelPatients';
 import SentinelPatientDetailPage from '@/pages/SentinelPatients/PatientDetail';
+import SentinelNewVisitPage from '@/pages/SentinelPatients/NewVisitPage';
 import AppShell from '@/components/AppShell';
 
 /**
@@ -67,6 +68,7 @@ function App() {
         {/* Sentinel demo (hackathon 主秀) */}
         <Route path="/sentinel/patients" element={<SentinelPatientsPage />} />
         <Route path="/sentinel/patients/:patientId" element={<SentinelPatientDetailPage />} />
+        <Route path="/sentinel/patients/:patientId/visit/new" element={<SentinelNewVisitPage />} />
       </Route>
 
       {/* 找不到路由 → 回 sentinel 搜尋 */}

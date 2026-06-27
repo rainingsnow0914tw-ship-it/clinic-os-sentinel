@@ -129,3 +129,39 @@ export async function getPatientDetail(patientId: string): Promise<PatientDetail
   const { data } = await apiClient.get<PatientDetail>(`/v1/sentinel/patients/${patientId}`);
   return data;
 }
+
+// Phase 4.1 新就診
+export interface NewVisitInput {
+  chief_complaint: string;
+  hpi?: string;
+  physical_exam?: string;
+  diagnosis?: string;
+  visit_date?: string;
+  vital_signs?: {
+    blood_pressure_systolic?: number;
+    blood_pressure_diastolic?: number;
+    heart_rate?: number;
+    respiratory_rate?: number;
+    temperature_c?: number;
+    oxygen_saturation?: number;
+  };
+  free_notes?: string;
+}
+
+export interface NewVisitResponse {
+  visit_id: string;
+  patient_id: string;
+  visit_date: string;
+  status: string;
+}
+
+export async function createVisit(
+  patientId: string,
+  payload: NewVisitInput
+): Promise<NewVisitResponse> {
+  const { data } = await apiClient.post<NewVisitResponse>(
+    `/v1/sentinel/patients/${patientId}/visits`,
+    payload
+  );
+  return data;
+}

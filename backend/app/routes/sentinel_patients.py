@@ -24,10 +24,15 @@ import logging
 from typing import Optional
 from uuid import UUID
 
+from datetime import datetime, timezone
+from uuid import uuid4
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
+
+from app.models import User, VisitExamination as _VEModel
 
 from app.core.database import SessionLocal
 from app.models import (
@@ -404,3 +409,126 @@ def get_patient_heart_layer(
     if not p:
         raise HTTPException(status_code=404, detail=f"Patient {patient_id} not found")
     return _load_heart_layer(db, patient_id)
+
+
+# ─────────────────────────────────────────────────────────
+# Create new visit (Phase 4.1)
+# ─────────────────────────────────────────────────────────
+
+class VitalSignsInput(BaseModel):
+    blood_pressure_systolic: int | None = None
+    blood_pressure_diastolic: int | None = None
+    heart_rate: int | None = None
+    respiratory_rate: int | None = None
+    temperature_c: float | None = None
+    oxygen_saturation: int | None = None
+
+
+class NewVisitRequest(BaseModel):
+    chief_complaint: str = Field(..., min_length=1)
+    hpi: str | None = None
+    physical_exam: str | None = None
+    diagnosis: str | None = None
+    visit_date: str | None = None   # ISO format, 預設 now
+    vital_signs: VitalSignsInput | None = None
+    free_notes: str | None = None
+
+
+class NewVisitResponse(BaseModel):
+    visit_id: UUID
+    patient_id: UUID
+    visit_date: str
+    status: str
+
+
+@router.post(
+    "/sentinel/patients/{patient_id}/visits",
+    response_model=NewVisitResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_visit(
+    patient_id: UUID,
+    payload: NewVisitRequest,
+    db: Session = Depends(get_db),
+):
+    """新就診 (Phase 4.1, dev-bypass)。
+
+    建 Visit + VisitExamination (如果帶 vital_signs)。
+    醫師 ID auto pick 第一個 owner user (demo mode)。
+    """
+    patient = db.get(Patient, patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail=f"Patient {patient_id} not found")
+
+    # owner user (demo 一個醫師)
+    owner = db.scalars(select(User).order_by(User.created_at).limit(1)).first()
+    if not owner:
+        raise HTTPException(status_code=500, detail="No user in DB")
+
+    # visit_date
+    if payload.visit_date:
+        try:
+            vdate = datetime.fromisoformat(payload.visit_date.replace("Z", "+00:00"))
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid visit_date: {payload.visit_date}")
+    else:
+        vdate = datetime.now(timezone.utc)
+
+    visit_uuid = uuid4()
+    visit = Visit(
+        id=visit_uuid,
+        clinic_id=patient.clinic_id,
+        patient_id=patient.id,
+        doctor_user_id=owner.id,
+        visit_date=vdate,
+        chief_complaint=payload.chief_complaint,
+        hpi=payload.hpi,
+        physical_exam=payload.physical_exam,
+        diagnosis=payload.diagnosis,
+        status="completed",
+        source="manual",
+        is_demo_data=False,
+    )
+    db.add(visit)
+
+    # 如果帶 vital_signs / free_notes 也建 visit_examination
+    vs = payload.vital_signs
+    if vs and any(getattr(vs, f) is not None for f in vs.model_fields):
+        exam = _VEModel(
+            id=uuid4(),
+            clinic_id=patient.clinic_id,
+            visit_id=visit_uuid,
+            patient_id=patient.id,
+            vital_signs_json=vs.model_dump(exclude_none=True),
+            lab_results_json=None,
+            xray_findings=None,
+            ecg_findings=None,
+            free_notes=payload.free_notes,
+            source="manual",
+            is_demo_data=False,
+        )
+        db.add(exam)
+    elif payload.free_notes:
+        exam = _VEModel(
+            id=uuid4(),
+            clinic_id=patient.clinic_id,
+            visit_id=visit_uuid,
+            patient_id=patient.id,
+            vital_signs_json=None,
+            lab_results_json=None,
+            xray_findings=None,
+            ecg_findings=None,
+            free_notes=payload.free_notes,
+            source="manual",
+            is_demo_data=False,
+        )
+        db.add(exam)
+
+    db.commit()
+
+    return NewVisitResponse(
+        visit_id=visit_uuid,
+        patient_id=patient.id,
+        visit_date=vdate.isoformat(),
+        status="completed",
+    )
