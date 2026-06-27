@@ -85,6 +85,26 @@ function NewVisitPage() {
     prn: 1,
   } as Record<string, number>)[f] || 1;
 
+  // Audit 學名雙寫: brand (學名) 讓 AI 用學名查 openFDA/RxNorm 才命中
+  function audit_drug_label(drug: DrugItem): string {
+    const base = (drug.code.split('_')[0] || '').toUpperCase();
+    const OVERRIDE: Record<string, string> = {
+      IBU: 'ibuprofen',
+      PARA: 'paracetamol',
+      AMOX: 'amoxicillin',
+    };
+    const NON_DRUG_PREFIX = new Set([
+      'WOUND', 'PROBIOTIC', 'ANTACID', 'ANTIFUNGAL', 'ANTIHISTAMINE',
+      'COUGH', 'GENERIC', 'GUAIFENESIN', 'ARTIFICIAL', 'ORS', 'SALINE', 'VIT',
+    ]);
+    if (OVERRIDE[base]) return `${drug.name} (${OVERRIDE[base]})`;
+    if (NON_DRUG_PREFIX.has(base)) return drug.name;   // 不是學名前綴, 不加
+    // 一般 code: AMLODIPINE_5 / AZITHROMYCIN_250 / ATORVASTATIN_20 -> 加學名
+    const generic = base.toLowerCase();
+    if (generic.length < 4) return drug.name;
+    return `${drug.name} (${generic})`;
+  }
+
   function makeRxRow(): RxRow {
     return { category: '', q: '', searching: false, searchResults: [], freq: 'tid', perDose: 1, days: 5 };
   }
@@ -152,7 +172,8 @@ function NewVisitPage() {
       const hl = patient.heart_layer;
       const workingHypothesis = dx.trim() || cc;
       // Phase 7.4: 從 form rxRows 取藥名 (drug.name) + 加上 textarea fallback
-      const rxFromForm = rxRows.filter((r) => r.drug).map((r) => r.drug!.name);
+      // Audit 優化: brand + 學名雙寫, 讓 Qwen 用學名查 openFDA / RxNorm 才命中
+      const rxFromForm = rxRows.filter((r) => r.drug).map((r) => audit_drug_label(r.drug!));
       const rxFromText = rxInput.split('\n').map((s) => s.trim()).filter(Boolean);
       const rxList = [...rxFromForm, ...rxFromText];
 
