@@ -516,3 +516,118 @@
 
 .btn-primary:hover { background: #1d4ed8; }
 .btn-primary:disabled { background: #93c5fd; cursor: not-allowed; }
+
+.btn-ai {
+  padding: 8px 16px;
+  background: #7c3aed;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.btn-ai:hover { background: #6d28d9; }
+.btn-ai:disabled { background: #c4b5fd; cursor: not-allowed; }
+
+/* AI panel */
+.ai-panel {
+  margin-top: 20px;
+  background: #faf5ff;
+  border: 2px solid #c4b5fd;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.ai-panel h3 {
+  font-size: 16px;
+  color: #5b21b6;
+  margin-bottom: 12px;
+}
+
+.ai-section {
+  background: white;
+  border: 1px solid #e9d5ff;
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.ai-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6d28d9;
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #ede9fe;
+}
+
+.ai-section-intake .ai-section-title { color: #1e40af; }
+.ai-section-triage .ai-section-title { color: #b91c1c; }
+.ai-section-edu .ai-section-title { color: #047857; }
+
+.ai-summary {
+  font-size: 13px;
+  color: #374151;
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  background: #f9fafb;
+  border-left: 2px solid #c4b5fd;
+  border-radius: 2px;
+}
+
+.ai-findings {
+  list-style: none;
+  padding: 0;
+}
+
+.ai-findings li {
+  font-size: 13px;
+  color: #1f2937;
+  padding: 4px 0;
+  border-bottom: 1px dashed #f3e8ff;
+  line-height: 1.5;
+}
+
+.ai-findings li:last-child { border-bottom: none; }
+
+.ai-section-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  background: #e0e7ff;
+  color: #3730a3;
+  font-size: 11px;
+  border-radius: 3px;
+  margin-right: 6px;
+  font-weight: 500;
+}
+
+.ai-conflict {
+  font-size: 13px;
+  color: #991b1b;
+  background: #fee2e2;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.ai-refs {
+  font-size: 11px;
+  color: #6b7280;
+  padding-left: 12px;
+}
+
+.ai-advice {
+  font-size: 13px;
+  color: #1f2937;
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+.ai-note {
+  font-size: 11px;
+  color: #6b7280;
+  margin-top: 6px;
+  font-style: italic;
+}

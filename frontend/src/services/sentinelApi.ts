@@ -165,3 +165,125 @@ export async function createVisit(
   );
   return data;
 }
+
+// ─── Phase 4.2a: Sentinel agent 4 件套 ───────────────────────
+
+export interface IntakeFinding {
+  section: string;
+  text: string;
+}
+export interface IntakeResponse {
+  findings: IntakeFinding[];
+  summary: string;
+  model_used: string;
+}
+
+export interface TriageDifferential {
+  name: string;
+  reason: string;
+  references?: string[];
+}
+export interface TriageResponse {
+  has_conflict: boolean;
+  conflict_summary: string;
+  differentials: TriageDifferential[];
+  closing_note: string;
+  model_used: string;
+}
+
+export interface AuditContextualRisk {
+  drug: string;
+  risk: string;
+  triggered_by: string;
+  source_url?: string | null;
+  needs_confirmation: boolean;
+}
+export interface AuditRuleFinding {
+  drug_a: string;
+  drug_b: string;
+  severity: string;
+  evidence: string;
+  recommendation?: string;
+}
+export interface AuditResponse {
+  rule_engine_findings: AuditRuleFinding[];
+  contextual_risks: AuditContextualRisk[];
+  unknowns: string[];
+  closing_note: string;
+  model_used: string;
+}
+
+export interface EducationResponse {
+  advice: string;
+  model_used: string;
+}
+
+// Mapper: backend heart_layer -> sentinel schema input
+function toSentinelFlags(flags: HeartFlag[]) {
+  // valid sentinel schema flag types
+  const allowed = new Set(['allergy', 'pregnancy', 'major_history', 'medical_directive', 'interaction_note', 'origin']);
+  return flags
+    .filter((f) => allowed.has(f.flag_type))
+    .map((f) => ({
+      type: f.flag_type,
+      content: f.content,
+      severity: f.severity,
+      source: f.flag_source,
+    }));
+}
+
+function toSentinelProblems(problems: HeartProblem[]) {
+  return problems.map((p) => ({
+    name: p.problem_name,
+    diagnosed_at: p.diagnosed_at,
+    control_status: ['controlled', 'unstable', 'worsening'].includes(p.control_status)
+      ? p.control_status
+      : null,
+    medications: [],
+  }));
+}
+
+function toSentinelMeds(meds: HeartMedication[]) {
+  return meds.map((m) => ({
+    name: m.medication_name,
+    category: ['chronic_disease_med', 'supplement', 'tcm'].includes(m.category)
+      ? m.category
+      : 'chronic_disease_med',
+    composition_certain: true,
+  }));
+}
+
+export async function runIntake(rawDictation: string, chiefComplaintHint?: string): Promise<IntakeResponse> {
+  const { data } = await apiClient.post<IntakeResponse>('/v1/sentinel/intake', {
+    raw_dictation: rawDictation,
+    chief_complaint_hint: chiefComplaintHint,
+  });
+  return data;
+}
+
+export async function runTriage(
+  workingHypothesis: string,
+  flags: HeartFlag[],
+  problems: HeartProblem[],
+  meds: HeartMedication[]
+): Promise<TriageResponse> {
+  const { data } = await apiClient.post<TriageResponse>('/v1/sentinel/triage', {
+    working_hypothesis: workingHypothesis,
+    flags: toSentinelFlags(flags),
+    problems: toSentinelProblems(problems),
+    medications: toSentinelMeds(meds),
+  });
+  return data;
+}
+
+export async function runEducation(
+  diagnosis: string,
+  patientNameHint?: string
+): Promise<EducationResponse> {
+  const { data } = await apiClient.post<EducationResponse>('/v1/sentinel/education', {
+    diagnosis,
+    patient_habits: {},
+    patient_name_hint: patientNameHint,
+  });
+  return data;
+}

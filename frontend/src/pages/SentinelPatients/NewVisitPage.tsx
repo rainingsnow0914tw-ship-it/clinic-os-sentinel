@@ -10,7 +10,17 @@
  */
 import { FormEvent, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { createVisit, getPatientDetail, PatientDetail } from '@/services/sentinelApi';
+import {
+  createVisit,
+  getPatientDetail,
+  PatientDetail,
+  runIntake,
+  runTriage,
+  runEducation,
+  IntakeResponse,
+  TriageResponse,
+  EducationResponse,
+} from '@/services/sentinelApi';
 import './styles.css';
 
 function NewVisitPage() {
@@ -33,6 +43,13 @@ function NewVisitPage() {
   const [spo2, setSpo2] = useState('');
   const [freeNotes, setFreeNotes] = useState('');
 
+  // Phase 4.2a: sentinel agent panel
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [intakeResult, setIntakeResult] = useState<IntakeResponse | null>(null);
+  const [triageResult, setTriageResult] = useState<TriageResponse | null>(null);
+  const [educationResult, setEducationResult] = useState<EducationResponse | null>(null);
+
   useEffect(() => {
     if (!patientId) return;
     getPatientDetail(patientId)
@@ -40,6 +57,46 @@ function NewVisitPage() {
       .catch((e) => setError(e?.message ?? '載入病人資料失敗'))
       .finally(() => setLoading(false));
   }, [patientId]);
+
+  async function runAiSuggestions() {
+    if (!patient) return;
+    if (!cc.trim()) {
+      setAiError('CC 必填才能跑 AI');
+      return;
+    }
+    setAiLoading(true);
+    setAiError(null);
+    setIntakeResult(null);
+    setTriageResult(null);
+    setEducationResult(null);
+    try {
+      // 並行 call sentinel agents (Qwen 每個 5-15s, 並行加快)
+      const hl = patient.heart_layer;
+      const workingHypothesis = dx.trim() || cc;
+      const [intakeRes, triageRes, eduRes] = await Promise.allSettled([
+        runIntake(`${cc}${hpi ? '。' + hpi : ''}`, cc),
+        runTriage(workingHypothesis, hl.flags, hl.problems, hl.medications),
+        dx.trim() ? runEducation(dx, patient.name) : Promise.reject('skip: dx 空'),
+      ]);
+      if (intakeRes.status === 'fulfilled') setIntakeResult(intakeRes.value);
+      if (triageRes.status === 'fulfilled') setTriageResult(triageRes.value);
+      if (eduRes.status === 'fulfilled') setEducationResult(eduRes.value);
+
+      // 抓第一個 error 顯示
+      const errs = [intakeRes, triageRes, eduRes]
+        .filter((r) => r.status === 'rejected')
+        .map((r: any) => r.reason?.message ?? String(r.reason));
+      if (errs.length === 3) {
+        setAiError(`所有 agent 都失敗：${errs.join(' | ')}`);
+      } else if (errs.length > 0) {
+        setAiError(`部分 agent 失敗：${errs.join(' | ')}`);
+      }
+    } catch (e: any) {
+      setAiError(e?.message ?? 'AI 跑失敗');
+    } finally {
+      setAiLoading(false);
+    }
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -202,15 +259,92 @@ function NewVisitPage() {
 
         <div className="form-actions">
           <Link to={`/sentinel/patients/${patientId}`} className="btn-cancel">取消</Link>
+          <button
+            type="button"
+            onClick={runAiSuggestions}
+            disabled={aiLoading || !cc.trim()}
+            className="btn-ai"
+            title="並行跑 sentinel intake/triage/education，每個 Qwen 5-15s"
+          >
+            {aiLoading ? '🤖 AI 跑中... (5-30s)' : '🤖 跑 AI 建議'}
+          </button>
           <button type="submit" disabled={saving} className="btn-primary">
             {saving ? '建立中...' : '✅ 完成就診'}
           </button>
         </div>
 
         <div style={{ marginTop: 8, color: '#9ca3af', fontSize: 12 }}>
-          Phase 4.1 草版: 寫進 DB 後立刻 completed. Phase 4.2 會加 4 agent 串通 + ai_drafts review.
+          Phase 4.2a: 「跑 AI 建議」並行 call sentinel intake/triage/education (Qwen3.7-max),
+          結果在下方 panel。Phase 4.2b 會加 audit + ai_drafts review 寫入。
         </div>
       </form>
+
+      {/* AI 建議 panel */}
+      {(aiError || intakeResult || triageResult || educationResult) && (
+        <div className="ai-panel">
+          <h3>🤖 Sentinel AI 建議</h3>
+          {aiError && <div className="error" style={{ marginBottom: 8 }}>⚠️ {aiError}</div>}
+
+          {intakeResult && (
+            <div className="ai-section ai-section-intake">
+              <div className="ai-section-title">
+                🚪 入口偵查官 (Intake) · {intakeResult.model_used}
+              </div>
+              {intakeResult.summary && <div className="ai-summary">{intakeResult.summary}</div>}
+              {intakeResult.findings.length > 0 ? (
+                <ul className="ai-findings">
+                  {intakeResult.findings.map((f, i) => (
+                    <li key={i}>
+                      <span className="ai-section-tag">{f.section}</span> {f.text}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div style={{ color: '#6b7280', fontSize: 12 }}>(沒 finding)</div>
+              )}
+            </div>
+          )}
+
+          {triageResult && (
+            <div className="ai-section ai-section-triage">
+              <div className="ai-section-title">
+                🚦 前閘門 (Triage) · {triageResult.model_used}
+              </div>
+              {triageResult.has_conflict && (
+                <div className="ai-conflict">⚠ 矛盾: {triageResult.conflict_summary}</div>
+              )}
+              {triageResult.differentials.length > 0 ? (
+                <ul className="ai-findings">
+                  {triageResult.differentials.map((d, i) => (
+                    <li key={i}>
+                      <strong>{d.name}</strong>: {d.reason}
+                      {d.references && d.references.length > 0 && (
+                        <div className="ai-refs">refs: {d.references.join(', ')}</div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div style={{ color: '#6b7280', fontSize: 12 }}>(無鑑別建議)</div>
+              )}
+              <div className="ai-note">{triageResult.closing_note}</div>
+            </div>
+          )}
+
+          {educationResult && (
+            <div className="ai-section ai-section-edu">
+              <div className="ai-section-title">
+                📚 衛教官 (Education) · {educationResult.model_used}
+              </div>
+              <div className="ai-advice">{educationResult.advice}</div>
+            </div>
+          )}
+
+          <div style={{ marginTop: 8, color: '#9ca3af', fontSize: 11 }}>
+            * 醫師可看 AI 建議後修改上方 form 再 ✅ 完成就診 (AI 不會自動寫進病歷, ADR-006 精神)
+          </div>
+        </div>
+      )}
     </div>
   );
 }
