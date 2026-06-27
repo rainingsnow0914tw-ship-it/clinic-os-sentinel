@@ -27,7 +27,7 @@ timeout /t 5 /nobreak >nul
 
 REM 4. 啟 vite (新視窗)
 echo [3/4] 啟動 frontend (port 5173)...
-start "Sentinel Frontend [關掉此視窗 = 停 vite]" cmd /k "cd /d %~dp0frontend && npm run dev"
+start "Sentinel Frontend [關掉此視窗 = 停 vite]" cmd /k "cd /d %~dp0frontend && npm run dev -- --host 127.0.0.1 --port 5173 --strictPort"
 
 REM 5. 等 vite ready
 timeout /t 5 /nobreak >nul
