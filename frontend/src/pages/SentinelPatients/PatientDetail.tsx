@@ -300,11 +300,11 @@ function PatientDetailPage() {
                   </div>
                 )}
 
-                {/* Phase 6: Mode A/B 回顧 (Track 1 MemoryAgent 主秀) */}
+                {/* Phase 6: AI 回顧 (Track 1 MemoryAgent 主秀, 司機 6/28 簡化成單按鈕) */}
                 <div className="review-section">
                   <div className="review-header">
                     🔁 <strong>AI 回顧此次就診</strong>
-                    <span className="review-hint">(對比當時看到 vs 現在看到的差異)</span>
+                    <span className="review-hint">(模擬當時情境 + 注入歷次 visit, 找出當時就該想到的盲點)</span>
                   </div>
                   <div className="review-buttons">
                     <button
@@ -312,14 +312,7 @@ function PatientDetailPage() {
                       onClick={() => handleReview(v.id, 'at_the_time')}
                       disabled={reviewMap[v.id]?.loading}
                     >
-                      🅰️ Mode A: 當時可獲得的資訊
-                    </button>
-                    <button
-                      className="btn-review btn-mode-b"
-                      onClick={() => handleReview(v.id, 'hindsight')}
-                      disabled={reviewMap[v.id]?.loading}
-                    >
-                      🅱️ Mode B: 事後諸葛 (不究責)
+                      🔁 跑 AI 回顧 (約 30-60 秒)
                     </button>
                   </div>
 
@@ -412,8 +405,7 @@ function PatientDetailPage() {
  */
 function ReviewResultPanel({ result }: { result: ReviewResponse }) {
   const mode = result.mode;
-  const modeBadge = mode.mode === 'at_the_time' ? 'Mode A' : 'Mode B';
-  const modeColor = mode.mode === 'at_the_time' ? '#1d4ed8' : '#b45309';
+  const modeColor = '#1d4ed8';
   const [savedLessonId, setSavedLessonId] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveBusy, setSaveBusy] = useState(false);
@@ -463,19 +455,19 @@ function ReviewResultPanel({ result }: { result: ReviewResponse }) {
     }
   }
 
-  const canSave = mode.mode === 'hindsight' && !!result.audit && !savedLessonId;
+  const canSave = !!result.audit && !savedLessonId;
   return (
     <div className="review-result">
       <div className="review-mode-header" style={{ borderLeftColor: modeColor }}>
         <div>
           <span className="review-mode-badge" style={{ background: modeColor }}>
-            {modeBadge}
+            AI 回顧
           </span>
-          <span className="review-source">心臟層來源: {mode.heart_layer_source}</span>
+          <span className="review-source">當時心臟層來源: {mode.heart_layer_source}</span>
         </div>
         {mode.summary_text && (
           <div className="review-summary">
-            <strong>AI 看到的心臟層摘要:</strong>
+            <strong>AI 看到的當時心臟層 + 歷次 visit:</strong>
             <pre>{mode.summary_text}</pre>
           </div>
         )}
@@ -572,8 +564,8 @@ function ReviewResultPanel({ result }: { result: ReviewResponse }) {
         💡 {result.mode_disclaimer}
       </div>
 
-      {/* Phase 7.2: Mode B 加進醫師 watchlist (AI 反訓練醫生) */}
-      {mode.mode === 'hindsight' && result.audit && (
+      {/* Phase 7.2: AI 回顧後加進醫師 watchlist (AI 反訓練醫生) */}
+      {result.audit && (
         <div className="watchlist-action">
           {savedLessonId ? (
             <div className="watchlist-saved">

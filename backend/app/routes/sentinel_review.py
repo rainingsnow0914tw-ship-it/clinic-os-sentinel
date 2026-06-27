@@ -47,6 +47,9 @@ from app.agents import (
 from app.core.database import SessionLocal
 from app.models import (
     AiDraft,
+    Drug,
+    Prescription,
+    PrescriptionItem,
     Visit,
     VisitExamination,
 )
@@ -75,6 +78,44 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def _build_past_visits_summary(db: Session, patient_id, target_visit_date) -> str:
+    """撈 target_visit_date 之前的所有 visit, 摘要成 plain text 注入 AI context.
+
+    司機 6/28 反饋: Mode A 不只該注入當次, 也該注入歷次 visit (dx + Rx),
+    AI 才會知道 「病人之前就講過高血壓」.
+    """
+    visits = db.scalars(
+        select(Visit)
+        .where(
+            Visit.patient_id == patient_id,
+            Visit.visit_date < target_visit_date,
+        )
+        .order_by(Visit.visit_date)
+    ).all()
+    if not visits:
+        return ""
+
+    lines = ["【病人過去就診歷史 (按時序由早到近)】"]
+    for v in visits:
+        rx_rows = db.execute(
+            select(Drug.name, PrescriptionItem.usage_text, PrescriptionItem.days)
+            .join(PrescriptionItem, PrescriptionItem.drug_id == Drug.id)
+            .join(Prescription, Prescription.id == PrescriptionItem.prescription_id)
+            .where(Prescription.visit_id == v.id)
+        ).all()
+        rx_parts = [f"{r[0]} ({r[1] or ''}{'×'+str(r[2])+'D' if r[2] else ''})" for r in rx_rows]
+        rx_text = ", ".join(rx_parts) if rx_parts else "(無處方)"
+        parts = [f"- {v.visit_date.date()}"]
+        if v.chief_complaint:
+            parts.append(f"主訴 {v.chief_complaint}")
+        if v.diagnosis:
+            parts.append(f"診斷: {v.diagnosis}")
+        parts.append(f"Rx: {rx_text}")
+        lines.append(" / ".join(parts))
+
+    return "\n".join(lines)
 
 
 # ============================================================
@@ -216,6 +257,9 @@ async def review_visit(
     else:  # hindsight
         heart = load_heart_layer_at_visit(db, visit, prefer="after_visit")
 
+    # 司機 6/28: 撈 target_visit 之前的所有 visit 摘要, 注入 AI context
+    past_visits_summary = _build_past_visits_summary(db, visit.patient_id, visit.visit_date)
+
     flags = _map_flags(heart["flags_json"])
     problems = _map_problems(heart["problems_json"])
     medications = _map_medications(heart["medications_json"])
@@ -250,8 +294,16 @@ async def review_visit(
             dictation_parts.append(f"HR {vs['heart_rate']} bpm")
     intake_req: IntakeRequest | None = None
     if dictation_parts:
+        current_dictation = " / ".join(dictation_parts)
+        # 注入歷次 visit 摘要 (司機 6/28 反饋)
+        if past_visits_summary:
+            current_dictation = (
+                past_visits_summary
+                + "\n\n【本次就診主訴 + 檢查】\n"
+                + current_dictation
+            )
         intake_req = IntakeRequest(
-            raw_dictation=" / ".join(dictation_parts),
+            raw_dictation=current_dictation,
             chief_complaint_hint=visit.chief_complaint,
             patient_id=visit.patient_id,
             visit_id=visit.id,
@@ -263,8 +315,15 @@ async def review_visit(
     triage_req: TriageRequest | None = None
     hypothesis = visit.diagnosis or visit.chief_complaint
     if hypothesis:
+        # 注入歷次 visit 摘要 (司機 6/28 反饋)
+        full_hypothesis = hypothesis
+        if past_visits_summary:
+            full_hypothesis = (
+                f"本次工作假設: {hypothesis}\n\n"
+                + past_visits_summary
+            )
         triage_req = TriageRequest(
-            working_hypothesis=hypothesis,
+            working_hypothesis=full_hypothesis,
             flags=flags,
             problems=problems,
             medications=medications,
