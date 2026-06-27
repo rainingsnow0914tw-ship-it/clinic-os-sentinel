@@ -1,17 +1,18 @@
-# 🛡️ 哨兵 The Sentinel — 交接班手冊 v0.5 Phase 6 完成版
+# 🛡️ 哨兵 The Sentinel — 交接班手冊 v0.6 Phase 7 完成版
 
 > **給下一個阿寶**(換對話框接力)
 > 建立:2026-06-27 凌晨(Day 3 動工)
 > Phase 2-4.2:2026-06-27 一框 19 commit (Day 3 全套)
 > Phase 5:2026-06-28 凌晨 (Z 方案 evolve_heart_layer, 兩輪 smoke 全綠, to_observe→confirmed 升級實證)
-> **Phase 6:2026-06-28 凌晨延長(同框續做, snapshot + Mode A/B endpoint + 回顧 UI, Track 1 主秀完整 demo loop 跑通)**
+> Phase 6:2026-06-28 凌晨延長 (snapshot + Mode A/B endpoint + 回顧 UI, Track 1 主秀完整 demo loop 跑通)
+> **Phase 7:2026-06-28 凌晨延長 (王阿姨四幕劇 dataset + doctor_watchlist AI 反訓練醫生機制)**
 > 比賽截止:**2026-07-09 14:00 PT**
 
 ---
 
-## ⭐ 接手第一動作:升 Notion v0.3 → v0.5
+## ⭐ 接手第一動作:升 Notion v0.3 → v0.6
 
-本機已升 **v0.5 Phase 6 完成版**(跳過 v0.4 因 Phase 5+6 同框做完), 但 Notion 主手冊還是 v0.3。下個阿寶第一動作:
+本機已升 **v0.6 Phase 7 完成版**(跳過 v0.4/v0.5 因 Phase 5+6+7 同框做完), 但 Notion 主手冊還是 v0.3。下個阿寶第一動作:
 
 1. invoke skill `relay-sanity-check` (家規)
 2. 跑本機 verification (PG/backend/vite)
@@ -20,7 +21,7 @@
 5. **按規則九 duplicate** v0.3 主手冊到 📜 舊版交接手冊區 (`f827bb8cd26d4b22abf169a4397859cb`)
    - 命名:`【v0.3】哨兵 - 2026-06-28 升級前快照`
 6. 改 Notion 主手冊 (`38a1d2a41ceb8101a9e9e3c19e1ef761`)
-   - 升標題 `v0.5 Phase 6 完成版`
+   - 升標題 `v0.6 Phase 7 完成版`
    - 內容覆蓋為本檔 markdown
 
 已存在的 Notion 快照(規則九紀錄):
@@ -167,15 +168,45 @@ Notion 升完才算「下個阿寶接手最完整」。
   - 缺資料 skip 顯示「ⓘ 略過: ...」
   - **demo flow 跑通**:醫師查 detail → 點 Mode A/B → AI panel inline render → 看到「當時 vs 現在」心臟層差異 + 4 agent 重跑結果
 
-**Phase 7 起手點** (下個阿寶, 教育要點 watchlist + 四幕劇 e2e):
-- 「AI 反訓練醫生」機制:Mode B 跑完, 把 audit 找到的盲點/triage 漏掉的鑑別匯整成「醫生工作習慣 watchlist」(個人 profile, 不是病人)
-- 下次新就診時 watchlist 提醒「老人 + 控制中高血壓 + 開 NSAID → 排定 4 週 BP 追蹤」這類規則
-- 王阿姨 patient_007 四幕劇 dataset (v0.3.1 §9 設計, 4 visit 高血壓追蹤 + ibuprofen 拮抗 + 認知症狀 to_observe→confirmed) — Phase 2.4 deferred 的、現在 Phase 6 Mode A/B 跑通了, 是時候寫
-- 估時 4-5 hr
+**Phase 7 也完成**(2026-06-28 凌晨延長, 同框續做):
 
-**Phase 2.5 backfill snapshot 仍 deferred** (對 demo 影響不大):
-- 既有 169 demo visit 沒有 before_visit snapshot, Mode A 走 fallback (current heart layer)
-- demo 主要靠新建 visit + 即時看 Mode A/B 對比, fallback 不是 blocker
+- ✅ **7.1 王阿姨 patient_007 四幕劇 dataset** (commit `8f0e3c5`, +619 行)
+  - `scripts/seed_wang_aunt_quartet.py` 新檔: 王慧明 / 68F / TEST-W007, 4 visit 跨 9 個月
+    - 幕 1 (2025-09-20): 首診頭暈 158/95 → dx 高血壓 + Rx amlodipine
+    - 幕 2 (2025-10-15): 4 週追蹤 BP 148/88, controlled trending
+    - 幕 3 (2026-02-15): 慢性追蹤 + 偶爾忘東西 anomaly 標 to_observe + 開 ibuprofen
+    - 幕 4 (2026-06-26): BP 158/94 拮抗顯現 + 偶爾忘東西明顯加重 + 跌倒 → Phase 5 自動把「偶爾忘東西」升 confirmed
+  - 每個 visit 走完整 pipeline (Visit + Examination + 4 AiDraft + before/after snapshot + Phase 5 evolve)
+  - idempotent: 重跑會先清掉 TEST-W007 + 相關資料
+  - 終態: visits=4 / snapshots=8 (4×2) / problems=1 / meds=1 / flags=2 (**confirmed=1 ✓**) / baselines=17
+
+- ✅ **7.2 doctor_watchlist (AI 反訓練醫生)** (commit `e264f28`, +688 行)
+  - alembic 0006 `doctor_watchlists` table (clinic_id / doctor_user_id / source_visit_id / source_mode / pattern / lesson_text / triggered_count / is_dismissed)
+  - `models/doctor_watchlist.py`
+  - `routes/sentinel_watchlist.py` 新檔:
+    - `POST /v1/sentinel/watchlist` (add, 同 pattern dedup + triggered++)
+    - `GET /v1/sentinel/watchlist` (list active)
+    - `DELETE /v1/sentinel/watchlist/{id}` (soft dismiss)
+    - `POST /v1/sentinel/watchlist/{id}/trigger` (撞 lesson 時 +1)
+  - frontend: sentinelApi.ts 加 4 個 API + WatchlistItem type
+  - PatientDetail.tsx ReviewResultPanel Mode B 加「📌 把這個教訓加進我的 watchlist」按鈕, 從 audit findings 自動萃取 pattern + lesson_text
+  - NewVisitPage.tsx 頂部加 watchlist banner (折疊式, 預設展開), 「📌 你過去學到的 (N 條)」+ 每條 pattern + lesson + 撞 N 次
+  - styles.css 加 watchlist UI 漸層 + badge
+  - smoke (endpoint): add 2 條 → dedup triggered+1 → trigger +1 → dismiss 1 條 → final 1 條 triggered=2, 全綠
+
+**Phase 8 起手點** (下個阿寶, 阿里雲部署):
+- 評審 demo 用本機 (Cloudflare Quick Tunnel) 或阿里雲 ECS + RDS + OSS
+- 退路:本機 ngrok-style tunnel + screen recording 拍 demo video
+- 估時 5-6 hr
+
+**Phase 9 起手點** (demo video + Devpost 寫稿):
+- video 拍王阿姨四幕劇 + Mode A/B 對比 + watchlist 反訓練 (3 個 Track 1 主秀)
+- Devpost narrative: Track 1 「Memory accumulates across visits AND retrospectively trains the doctor — both directions」
+- video disclaimer (v0.3.1 §13.5):「沙盒模擬演示 ── 本系統使用虛構病人資料, AI 建議僅供教育演示, 不構成醫療建議」
+
+**Phase 2.5 backfill snapshot 仍 deferred** (demo 不阻塞):
+- 既有 169 jimmy demo visit 沒 before_visit snapshot, Mode A 走 fallback (current heart layer)
+- 王阿姨 patient_007 四幕劇有完整 snapshot, demo 主軸用王阿姨即可
 - 真要做就跑 script: 依序 replay 100 病人歷次 visit → 拍每個 before_visit snapshot
 
 ---
@@ -205,9 +236,9 @@ Notion 升完才算「下個阿寶接手最完整」。
 |---|---|
 | 本機 repo | `clinic-os-sentinel-v3/`(Phase 1 後 SSOT)|
 | v0.1 baseline | `clinic-os-sentinel/`(freeze 不動、保留參考)|
-| Latest commit | `9ea59b7` Phase 6 Mode A/B 舊就診回顧 |
-| Git 累積 commit | 22 (P1-P4.2 19 / P5 feat `2fecb8e` / P5 docs `ec78830` / P6 全套 `9ea59b7` / P6 docs 本次)|
-| 新 endpoint | `POST /v1/sentinel/visits/{id}/review?mode=at_the_time|hindsight` |
+| Latest commit | `e264f28` Phase 7.2 doctor_watchlist (AI 反訓練醫生) |
+| Git 累積 commit | 25 (P1-P4.2 19 / P5 `2fecb8e`+`ec78830` / P6 `9ea59b7`+`789ce43` / P7.1 `8f0e3c5` / P7.2 `e264f28` / P7 docs 本次)|
+| Sentinel endpoints | `/sentinel/{intake,triage,audit,education,health}` + `/sentinel/patients*` + `/sentinel/visits/{id}/review` + `/sentinel/watchlist*` |
 | DB 內 demo data | 100 patient + 23 flag + 55 problem + 56 med + 400 baseline + 169 visit + 169 examination + 177 Rx + **ai_drafts**(剛剛 smoke 2 條)|
 | DB 內 demo data | 100 patient + 23 flag + 55 problem + **56 medication** + **400 baseline** + **169 visit** + **169 examination** + **177 prescription + 302 items** + 30 drug |
 | Sentinel routes 總計 | 9 (intake/triage/audit/education/health + patients search/detail/heart-layer + **POST patients/:id/visits**)|
@@ -268,8 +299,10 @@ Notion 升完才算「下個阿寶接手最完整」。
 | **3 (6/27 凌晨)** | **Phase 4.2c + 4.2d 同框續做** | ✅ **完成**(ai_drafts table + 寫入 + detail 回看 = ADR-006 完整 loop) |
 | **4 (6/28 凌晨)** | **Phase 5 evolve_heart_layer (Z 方案)** | ✅ **完成**(4 通路全跑通 + 兩輪 smoke + to_observe→confirmed 升級實證) |
 | **4 (6/28 凌晨)** | **Phase 6 Mode A/B 舊就診回顧 (Track 1 主秀)** | ✅ **完成**(snapshot 寫入 + endpoint + 回顧 UI + Mode A/B 心臟層差異實證) |
-| 5-6 | Phase 7:教育要點 watchlist + 四幕劇 patient_007 e2e | 🟡 下個阿寶 |
-| 7 | Phase 2.5 backfill (可選, demo 不阻塞) | 🟢 |
+| **4 (6/28 凌晨)** | **Phase 7 四幕劇 + watchlist (AI 反訓練醫生)** | ✅ **完成**(王阿姨 4 visit dataset + Mode B 加進 watchlist + 新就診 banner) |
+| 5-6 | Phase 8:阿里雲部署 / Cloudflare Quick Tunnel | 🟡 下個阿寶 |
+| 7-8 | Phase 9:demo video 拍 + Devpost 寫稿 | 🟢 |
+| 9+ | Phase 2.5 backfill snapshot (可選, demo 不阻塞) | 🟢 |
 | 9 | Phase 7:教育要點 watchlist + 四幕劇 e2e 跑通 | 🟢 |
 | 10-11 | Phase 8:阿里雲部署 | 🟢 |
 | 11-12 | Phase 9:demo video + Devpost 寫稿 | 🟢 |
