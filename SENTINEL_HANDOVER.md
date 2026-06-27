@@ -1,20 +1,17 @@
-# 🛡️ 哨兵 The Sentinel — 交接班手冊 v0.4 Phase 5 完成版
+# 🛡️ 哨兵 The Sentinel — 交接班手冊 v0.5 Phase 6 完成版
 
 > **給下一個阿寶**(換對話框接力)
 > 建立:2026-06-27 凌晨(Day 3 動工)
-> Phase 2 補:2026-06-27 早上(同框續做)
-> Phase 3 補:2026-06-27 中午(同框續做、frontend 上)
-> Phase 2.4c/d/e + 4.1 補:2026-06-27 晚上(司機指完整真實病歷 + 4 段心臟層完整化 + 新就診頁 form)
-> Phase 4.2 補:2026-06-27 凌晨(4 agent + ai_drafts 完整 ADR-006 loop)
-> **Phase 5 補:2026-06-28 凌晨(Z 方案 evolve_heart_layer 上線, 兩輪 smoke 全綠, to_observe→confirmed 升級實證)**
-> 上一版:`../clinic-os-sentinel/SENTINEL_HANDOVER.md` v0.2(畫框結束交接版,2026-06-26)
+> Phase 2-4.2:2026-06-27 一框 19 commit (Day 3 全套)
+> Phase 5:2026-06-28 凌晨 (Z 方案 evolve_heart_layer, 兩輪 smoke 全綠, to_observe→confirmed 升級實證)
+> **Phase 6:2026-06-28 凌晨延長(同框續做, snapshot + Mode A/B endpoint + 回顧 UI, Track 1 主秀完整 demo loop 跑通)**
 > 比賽截止:**2026-07-09 14:00 PT**
 
 ---
 
-## ⭐ 接手第一動作:升 Notion v0.3 → v0.4
+## ⭐ 接手第一動作:升 Notion v0.3 → v0.5
 
-本機已升 **v0.4 Phase 5 完成版**, 但 Notion 主手冊還是 v0.3。下個阿寶第一動作:
+本機已升 **v0.5 Phase 6 完成版**(跳過 v0.4 因 Phase 5+6 同框做完), 但 Notion 主手冊還是 v0.3。下個阿寶第一動作:
 
 1. invoke skill `relay-sanity-check` (家規)
 2. 跑本機 verification (PG/backend/vite)
@@ -23,7 +20,7 @@
 5. **按規則九 duplicate** v0.3 主手冊到 📜 舊版交接手冊區 (`f827bb8cd26d4b22abf169a4397859cb`)
    - 命名:`【v0.3】哨兵 - 2026-06-28 升級前快照`
 6. 改 Notion 主手冊 (`38a1d2a41ceb8101a9e9e3c19e1ef761`)
-   - 升標題 `v0.4 Phase 5 完成版`
+   - 升標題 `v0.5 Phase 6 完成版`
    - 內容覆蓋為本檔 markdown
 
 已存在的 Notion 快照(規則九紀錄):
@@ -138,13 +135,48 @@ Notion 升完才算「下個阿寶接手最完整」。
   - 最終 anomaly flag `status=confirmed severity=red`
 - ✅ source 用合法值 `agent` (DemoDataMixin VALID_SOURCES), is_demo_data=False
 
-**Phase 6 起手點** (下個阿寶, Mode A/B 舊就診回顧):
-- snapshot 表 (`heart_layer_snapshots`) 已 schema 好、**Phase 2.5 backfill 仍未做**(seed 期間就要拍 before_visit snapshot)
-- ai_drafts dataset 已有 (Phase 4.2c+d 完成) + 心臟層演進歷史已有 (Phase 5 完成)
-- 加 detail page「🔁 回顧 mode A/B」按鈕 + 跑 sentinel agent 用 snapshot heart state
-- Mode A 用 `before_visit` snapshot (`load_heart_snapshot(visit_id, when='before')`) — fallback `reconstruct_heart_at(visit.patient_id, visit.visit_date)` 反推
-- Mode B 用 current heart layer + later visits, prompt 字眼防 hindsight bias (§8.1)
-- 估時 5-6 hr
+**Phase 6 也完成**(2026-06-28 凌晨 Day 4 同框續做):
+
+- ✅ **6.1 snapshot 寫入機制** (commit `9ea59b7` 一起進)
+  - `services/heart_evolution.py` 新增 `_serialize_heart_layer` / `take_heart_layer_snapshot` / `load_heart_layer_at_visit`
+  - create_visit 起始 `db.flush()` 後拍 `before_visit` snapshot
+  - evolve_heart_layer 之後再 `db.flush()` 拍 `after_visit` snapshot
+  - 冪等:同 visit + 同 type 已存在 skip
+  - summary_text 自動組 plain text (確認紅旗/待觀察/慢性病/長期用藥)
+  - smoke (TEST-0002 + 新建胸悶 visit): 2 snapshot 都寫進、before vs after 數量符合預期 (flags 1→2 / problems 0→1 / meds 0→2 / baselines 4→7)
+
+- ✅ **6.2 Mode A/B review endpoint** (`POST /v1/sentinel/visits/{id}/review?mode=at_the_time|hindsight`)
+  - `routes/sentinel_review.py` 新檔 (~280 行)
+  - Mode A:餵 before_visit snapshot heart layer 給 4 agent (`heart_layer_source=snapshot:before_visit`)
+  - Mode B:餵 after_visit / current heart layer (`heart_layer_source=snapshot:after_visit` 或 `fallback:current`)
+  - **不改 4 agent 內部 prompt, 純資料驅動** (snapshot vs current)
+  - mode_disclaimer 加在 response 而非 agent prompt (Mode B 防 hindsight bias「不代表當時判斷有錯」)
+  - 每個 agent best-effort, 缺資料 skip (e.g. 沒 dx 跳 education, 沒藥名跳 audit)
+  - snapshot dict → HeartFlag/Problem/Medication pydantic mapper (schema vs model enum 不一致 fallback)
+  - smoke (TEST-0002 visit, 對比 Mode A vs Mode B):
+    - Mode A summary: `0 待觀察 / 0 慢性病 / 0 長期用藥` → audit 1 rule finding
+    - Mode B summary: `2 待觀察 / 1 慢性病 / 2 長期用藥 (高血壓 + atorvastatin/amlodipine)` → audit **6 rule findings**
+    - 4 agent 全跑成功 (~45s 並行 Qwen3.7-max)
+    - **Track 1 主秀證據**:Mode A vs Mode B 心臟層摘要明顯不同, AI 看到的差異成立
+
+- ✅ **6.3 frontend 回顧 UI**
+  - `services/sentinelApi.ts` 加 `reviewVisit()` + `ReviewResponse` type
+  - `PatientDetail.tsx` visit-row 加「🅰️ Mode A」「🅱️ Mode B」兩按鈕
+  - `ReviewResultPanel` sub-component:mode header + heart_layer_source + summary + 4 agent panel + mode_disclaimer
+  - `styles.css`:review-section 漸層 + 4 agent 配色 (intake 藍 / triage 粉 / audit 紅 / education 綠) + disclaimer
+  - 缺資料 skip 顯示「ⓘ 略過: ...」
+  - **demo flow 跑通**:醫師查 detail → 點 Mode A/B → AI panel inline render → 看到「當時 vs 現在」心臟層差異 + 4 agent 重跑結果
+
+**Phase 7 起手點** (下個阿寶, 教育要點 watchlist + 四幕劇 e2e):
+- 「AI 反訓練醫生」機制:Mode B 跑完, 把 audit 找到的盲點/triage 漏掉的鑑別匯整成「醫生工作習慣 watchlist」(個人 profile, 不是病人)
+- 下次新就診時 watchlist 提醒「老人 + 控制中高血壓 + 開 NSAID → 排定 4 週 BP 追蹤」這類規則
+- 王阿姨 patient_007 四幕劇 dataset (v0.3.1 §9 設計, 4 visit 高血壓追蹤 + ibuprofen 拮抗 + 認知症狀 to_observe→confirmed) — Phase 2.4 deferred 的、現在 Phase 6 Mode A/B 跑通了, 是時候寫
+- 估時 4-5 hr
+
+**Phase 2.5 backfill snapshot 仍 deferred** (對 demo 影響不大):
+- 既有 169 demo visit 沒有 before_visit snapshot, Mode A 走 fallback (current heart layer)
+- demo 主要靠新建 visit + 即時看 Mode A/B 對比, fallback 不是 blocker
+- 真要做就跑 script: 依序 replay 100 病人歷次 visit → 拍每個 before_visit snapshot
 
 ---
 
@@ -173,8 +205,9 @@ Notion 升完才算「下個阿寶接手最完整」。
 |---|---|
 | 本機 repo | `clinic-os-sentinel-v3/`(Phase 1 後 SSOT)|
 | v0.1 baseline | `clinic-os-sentinel/`(freeze 不動、保留參考)|
-| Latest commit | `2fecb8e` Phase 5 evolve_heart_layer (Z 方案) |
-| Git 累積 commit | 21 (P1-P4.2: 19 commit / P5 feat: `2fecb8e` / P5 docs: 本次)|
+| Latest commit | `9ea59b7` Phase 6 Mode A/B 舊就診回顧 |
+| Git 累積 commit | 22 (P1-P4.2 19 / P5 feat `2fecb8e` / P5 docs `ec78830` / P6 全套 `9ea59b7` / P6 docs 本次)|
+| 新 endpoint | `POST /v1/sentinel/visits/{id}/review?mode=at_the_time|hindsight` |
 | DB 內 demo data | 100 patient + 23 flag + 55 problem + 56 med + 400 baseline + 169 visit + 169 examination + 177 Rx + **ai_drafts**(剛剛 smoke 2 條)|
 | DB 內 demo data | 100 patient + 23 flag + 55 problem + **56 medication** + **400 baseline** + **169 visit** + **169 examination** + **177 prescription + 302 items** + 30 drug |
 | Sentinel routes 總計 | 9 (intake/triage/audit/education/health + patients search/detail/heart-layer + **POST patients/:id/visits**)|
@@ -234,8 +267,9 @@ Notion 升完才算「下個阿寶接手最完整」。
 | **3 (6/27 深夜)** | **Phase 4.2a + 4.2b 同框續做** | ✅ **完成**(4 sentinel agent 全接通 NewVisitPage + AI panel) |
 | **3 (6/27 凌晨)** | **Phase 4.2c + 4.2d 同框續做** | ✅ **完成**(ai_drafts table + 寫入 + detail 回看 = ADR-006 完整 loop) |
 | **4 (6/28 凌晨)** | **Phase 5 evolve_heart_layer (Z 方案)** | ✅ **完成**(4 通路全跑通 + 兩輪 smoke + to_observe→confirmed 升級實證) |
-| 5-6 | Phase 6:Mode A/B 回顧頁 + Phase 2.5 snapshot backfill | 🟡 下個阿寶 |
-| 7 | Phase 7:教育要點 watchlist + 四幕劇 e2e | 🟢 |
+| **4 (6/28 凌晨)** | **Phase 6 Mode A/B 舊就診回顧 (Track 1 主秀)** | ✅ **完成**(snapshot 寫入 + endpoint + 回顧 UI + Mode A/B 心臟層差異實證) |
+| 5-6 | Phase 7:教育要點 watchlist + 四幕劇 patient_007 e2e | 🟡 下個阿寶 |
+| 7 | Phase 2.5 backfill (可選, demo 不阻塞) | 🟢 |
 | 9 | Phase 7:教育要點 watchlist + 四幕劇 e2e 跑通 | 🟢 |
 | 10-11 | Phase 8:阿里雲部署 | 🟢 |
 | 11-12 | Phase 9:demo video + Devpost 寫稿 | 🟢 |
