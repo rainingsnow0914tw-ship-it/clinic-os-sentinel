@@ -240,8 +240,25 @@
 .visit-row .visit-dx {
   color: #2563eb;
   font-size: 13px;
-  margin-top: 2px;
+  margin-top: 4px;
   font-weight: 500;
+}
+
+.visit-row .visit-hpi,
+.visit-row .visit-pe {
+  color: #374151;
+  font-size: 12px;
+  margin-top: 4px;
+  line-height: 1.5;
+  padding-left: 6px;
+  border-left: 2px solid #e5e7eb;
+}
+
+.visit-row .visit-pe {
+  border-left-color: #fbbf24;
+  background: #fffbeb;
+  padding: 4px 8px;
+  border-radius: 2px;
 }
 
 .back-link {
@@ -336,4 +353,49 @@
   border-radius: 4px;
   font-size: 12px;
   color: #92400e;
+}
+
+/* Rx 處方 */
+.rx-list {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 4px;
+}
+
+.rx-title {
+  font-size: 12px;
+  color: #065f46;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.rx-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  padding: 2px 0;
+  color: #064e3b;
+}
+
+.rx-no {
+  color: #047857;
+  font-weight: 600;
+}
+
+.rx-name {
+  font-family: 'SF Mono', Consolas, monospace;
+  font-weight: 500;
+  color: #064e3b;
+}
+
+.rx-usage {
+  color: #047857;
+}
+
+.rx-meta {
+  color: #6b7280;
+  font-size: 11px;
 }

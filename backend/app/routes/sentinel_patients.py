@@ -32,11 +32,14 @@ from sqlalchemy.orm import Session
 from app.core.database import SessionLocal
 from app.models import (
     Clinic,
+    Drug,
     Patient,
     PatientFlag,
     PatientProblem,
     PatientMedication,
     PatientBaseline,
+    Prescription,
+    PrescriptionItem,
     Visit,
 )
 
@@ -137,10 +140,23 @@ class HeartLayerSummary(BaseModel):
     baselines: list[HeartBaselineSummary]
 
 
+class PrescriptionItemSummary(BaseModel):
+    """處方一筆 (Phase 2.4d)"""
+    drug_name: str
+    drug_code: str | None = None
+    unit: str | None = None
+    usage_text: str | None = None    # 例 "1#bid pox5D" 醫師簡寫
+    daily_dose: float | None = None
+    days: int | None = None
+    total_quantity: int | None = None
+
+
 class VisitTimelineItem(BaseModel):
     id: UUID
     visit_date: str
     chief_complaint: str | None = None
+    hpi: str | None = None             # 現病史 (Phase 2.4c)
+    physical_exam: str | None = None   # 查體 (Phase 2.4c)
     diagnosis: str | None = None
     status: str
     # v0.3 examination 摘要 (jsonb columns 直接 expose, frontend 自行 render)
@@ -148,6 +164,8 @@ class VisitTimelineItem(BaseModel):
     lab_results: list | None = None
     xray_findings: str | None = None
     ecg_findings: str | None = None
+    # Phase 2.4d 處方
+    prescription_items: list[PrescriptionItemSummary] = []
 
 
 class PatientDetailResponse(BaseModel):
@@ -304,13 +322,44 @@ def get_patient_detail(
         .order_by(Visit.visit_date.desc())
     ).all()
 
-    # 一次撈所有 visit 的 examination (避免 N+1)
+    # 一次撈所有 visit 的 examination + prescription (避免 N+1)
     visit_ids = [v.id for v in visits]
     exam_by_vid: dict[UUID, "VisitExamination"] = {}
+    rx_by_vid: dict[UUID, list[PrescriptionItemSummary]] = {}
     if visit_ids:
         from app.models import VisitExamination as _VE
         for e in db.scalars(select(_VE).where(_VE.visit_id.in_(visit_ids))).all():
             exam_by_vid[e.visit_id] = e
+
+        # 一次 join prescription -> prescription_items -> drug 撈出 visit 處方
+        rx_rows = db.execute(
+            select(
+                Prescription.visit_id,
+                Drug.name,
+                Drug.code,
+                Drug.unit,
+                PrescriptionItem.usage_text,
+                PrescriptionItem.daily_dose,
+                PrescriptionItem.days,
+                PrescriptionItem.total_quantity,
+            )
+            .join(PrescriptionItem, PrescriptionItem.prescription_id == Prescription.id)
+            .join(Drug, Drug.id == PrescriptionItem.drug_id)
+            .where(Prescription.visit_id.in_(visit_ids))
+        ).all()
+        for row in rx_rows:
+            vid, name, code, unit, usage, dd, days, qty = row
+            rx_by_vid.setdefault(vid, []).append(
+                PrescriptionItemSummary(
+                    drug_name=name,
+                    drug_code=code,
+                    unit=unit,
+                    usage_text=usage,
+                    daily_dose=float(dd) if dd is not None else None,
+                    days=days,
+                    total_quantity=qty,
+                )
+            )
 
     visit_items = []
     for v in visits:
@@ -320,12 +369,15 @@ def get_patient_detail(
                 id=v.id,
                 visit_date=v.visit_date.isoformat() if v.visit_date else "",
                 chief_complaint=v.chief_complaint,
+                hpi=v.hpi,
+                physical_exam=v.physical_exam,
                 diagnosis=v.diagnosis,
                 status=v.status,
                 vital_signs=e.vital_signs_json if e else None,
                 lab_results=e.lab_results_json if e else None,
                 xray_findings=e.xray_findings if e else None,
                 ecg_findings=e.ecg_findings if e else None,
+                prescription_items=rx_by_vid.get(v.id, []),
             )
         )
 

@@ -179,10 +179,16 @@ function PatientDetailPage() {
                   📅 {v.visit_date?.split('T')[0] ?? v.visit_date} · [{v.status}]
                 </div>
                 {v.chief_complaint && (
-                  <div className="visit-cc">主訴：{v.chief_complaint}</div>
+                  <div className="visit-cc"><strong>CC 主訴：</strong>{v.chief_complaint}</div>
+                )}
+                {v.hpi && (
+                  <div className="visit-hpi"><strong>HPI 現病史：</strong>{v.hpi}</div>
+                )}
+                {v.physical_exam && (
+                  <div className="visit-pe"><strong>PE 查體：</strong>{v.physical_exam}</div>
                 )}
                 {v.diagnosis && (
-                  <div className="visit-dx">診斷：{v.diagnosis}</div>
+                  <div className="visit-dx"><strong>IMP 診斷：</strong>{v.diagnosis}</div>
                 )}
 
                 {/* 生命徵象 */}
@@ -236,6 +242,27 @@ function PatientDetailPage() {
                 {v.ecg_findings && (
                   <div className="finding-block">
                     <strong>📈 ECG:</strong> {v.ecg_findings}
+                  </div>
+                )}
+
+                {/* Rx 處方 */}
+                {v.prescription_items && v.prescription_items.length > 0 && (
+                  <div className="rx-list">
+                    <div className="rx-title">💊 Rx 處方</div>
+                    {v.prescription_items.map((rx, i) => (
+                      <div key={i} className="rx-row">
+                        <span className="rx-no">{i + 1}.</span>
+                        <span className="rx-name">{rx.drug_name}</span>
+                        {rx.usage_text && (
+                          <span className="rx-usage">{rx.usage_text}</span>
+                        )}
+                        {rx.days && rx.total_quantity != null && (
+                          <span className="rx-meta">
+                            × {rx.days}D ({rx.total_quantity}{rx.unit ?? ''})
+                          </span>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>

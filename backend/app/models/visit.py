@@ -14,7 +14,7 @@ Visit — 看診紀錄（minimal 版）。
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -57,6 +57,10 @@ class Visit(Base, TimestampMixin, DemoDataMixin):
     # 主訴 / 診斷（minimal — 之後 Sprint 2 會拆更細）
     chief_complaint: Mapped[str | None] = mapped_column(String(500), nullable=True)
     diagnosis: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    # v0.3 Phase 2.4c (司機示範真實診所病歷補上)
+    hpi: Mapped[str | None] = mapped_column(Text, nullable=True)              # 現病史 / Brief History
+    physical_exam: Mapped[str | None] = mapped_column(Text, nullable=True)    # 查體 PE 醫師發現
 
     # 狀態
     status: Mapped[str] = mapped_column(

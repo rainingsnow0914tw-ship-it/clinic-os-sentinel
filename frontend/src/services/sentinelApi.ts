@@ -81,16 +81,29 @@ export interface LabResult {
   is_abnormal?: boolean | null;
 }
 
+export interface PrescriptionItem {
+  drug_name: string;
+  drug_code?: string | null;
+  unit?: string | null;
+  usage_text?: string | null;
+  daily_dose?: number | null;
+  days?: number | null;
+  total_quantity?: number | null;
+}
+
 export interface VisitTimelineItem {
   id: string;
   visit_date: string;
   chief_complaint: string | null;
+  hpi: string | null;            // 現病史 (Phase 2.4c)
+  physical_exam: string | null;  // 查體
   diagnosis: string | null;
   status: string;
   vital_signs?: VitalSigns | null;
   lab_results?: LabResult[] | null;
   xray_findings?: string | null;
   ecg_findings?: string | null;
+  prescription_items?: PrescriptionItem[];   // Phase 2.4d
 }
 
 export interface PatientDetail {
