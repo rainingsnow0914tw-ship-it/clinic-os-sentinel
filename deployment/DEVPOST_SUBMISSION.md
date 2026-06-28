@@ -50,6 +50,8 @@ Every visit takes a `before_visit` and `after_visit` snapshot. This is what make
 🔁 **Mode A retrospective review — without the hindsight bias**
 The doctor clicks "Run AI Retrospective Review" on any past visit. The system loads the snapshot (or reconstructs it via `reconstruct_heart_at()` for legacy visits), injects every *prior* visit's diagnosis and prescription as context, and runs four Qwen agents. The AI sees **only what was knowable at the time** — never what we learned afterward. *Hindsight isn't a virtue. It's a bias we engineered out.*
 
+🧾 **And we show our work.** Every heart-layer item displays the visit it was first observed at. Every Mode A review explicitly lists what was excluded — *"⊘ flag: 偶爾忘東西 (first observed 2026-02-15, after this visit); 9 baselines recorded after this visit"*. The no-hindsight guarantee lives in the UI, not just in a promise.
+
 📌 **Doctor watchlist — the AI reverse-trains the human**
 When Mode A surfaces something the doctor missed, one click pins the lesson to **the doctor's** watchlist — not the patient's. Next time the doctor opens a new visit for *any* patient, a banner surfaces the pattern. *Memory across visits. AND backward into the doctor.*
 
@@ -93,7 +95,7 @@ The clinical researcher caught what no automated test would: a "Super Senior" pa
 ## Accomplishments we're proud of
 
 - 🔄 **A closed loop in both directions.** Forward (memory across visits) **and** backward (retrospective coaching). One demo, both directions, ~3 minutes end-to-end.
-- 🛡️ **Mode A is honest.** The AI sees only what was knowable then. The snapshot + reconstruct mechanism isn't a hack — it's the architecture.
+- 🛡️ **Mode A is honest — and the UI proves it.** The AI sees only what was knowable then. Every heart-layer row shows its visit-of-origin timestamp; every Mode A run explicitly lists what was excluded by reconstruction. The judges can read the no-hindsight guarantee straight off the screen.
 - 📌 **The watchlist belongs to the doctor, not the patient.** A lesson learned on Auntie Wang surfaces the next time the doctor sees *anyone* with the same pattern. *AI as coach, not chart.*
 - 💸 **Live on Alibaba Cloud for under $1.** ECS + OSS + DashScope + Caddy auto-TLS + HTTP/3 enabled. Cost-engineering is a feature.
 - 🩺 **Built with a clinical researcher in the loop.** Every UX bug — including the Mode A hindsight leak — was caught by the daily clinical audit pass, not by automated tests. Three days, 38+ commits, every one of them feedback-driven.

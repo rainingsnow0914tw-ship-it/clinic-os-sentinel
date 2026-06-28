@@ -105,6 +105,8 @@ The system runs in dev-bypass auth mode for judges — just open the URL.
 | Drug categories | https://47.84.230.19.nip.io/v1/sentinel/drugs/categories |
 | Doctor watchlist | https://47.84.230.19.nip.io/v1/sentinel/watchlist |
 
+A **gold `⭐ Track 1 demo patient` banner** at the top of the search page jumps straight to Auntie Wang's chart — judges don't need to know which patient to search for. The UI is fully bilingual (Traditional Chinese above, English overlay below) and the left-side navigation explicitly marks which modules are part of the hackathon scope (the Sentinel) vs future Clinic OS modules (greyed out, "Coming soon").
+
 Step-by-step walkthrough: [`deployment/LIVE_DEMO.md`](deployment/LIVE_DEMO.md)
 
 ---
@@ -116,7 +118,7 @@ The hackathon brief asks for AI that **accumulates memory across interactions an
 1. **Heart layer (`patient_problems`, `patient_medications`, `patient_flags`, `patient_baselines`)** — per-patient long-term state, updated automatically when a visit completes.
 2. **`evolve_heart_layer_after_visit`** — a deterministic post-visit hook (Phase 5) that translates the visit's diagnosis, prescription, and AI audit findings into heart-layer mutations: new chronic problems get inferred; long-term medications get promoted from one-off prescriptions; anomalies enter as `to_observe` and **auto-escalate to `confirmed` on second observation across visits**; vitals append to baseline trends.
 3. **Heart layer snapshots (`heart_layer_snapshots`)** — every visit takes a `before_visit` and `after_visit` snapshot, frozen-in-time. This is what enables Mode A.
-4. **Mode A reconstruct (`reconstruct_heart_at`)** — replays AI agents against the heart-layer-as-it-was, not as it is now. Critical to *avoid hindsight bias* — the AI sees only what was knowable at the time, plus prior visits' raw dictations and working hypotheses.
+4. **Mode A reconstruct (`reconstruct_heart_at`)** — replays AI agents against the heart-layer-as-it-was, not as it is now. Critical to *avoid hindsight bias* — the AI sees only what was knowable at the time, plus prior visits' raw dictations and working hypotheses. **The UI proves this**: every heart-layer row displays its visit-of-origin timestamp ("first observed at visit 2026-02-15"), and every Mode A review explicitly lists what was excluded by reconstruction ("⊘ flag: forgetfulness — first observed after this visit, AI cannot see"). The no-hindsight guarantee is visible to the judge on screen, not just claimed in the README.
 5. **Doctor watchlist (`doctor_watchlists`)** — the doctor pins a lesson learned from a Mode A review; future new-visit pages show this lesson as a banner. The AI literally retrospectively trains the doctor.
 
 ---

@@ -71,7 +71,7 @@ Family doctors lose info across visits — The Sentinel closes that loop
 
 ### 🎬 Act 1 — Auntie Wang's heart layer（0:08 – 0:40, 32 秒）
 
-📺 開始錄屏 → 打開 https://47.84.230.19.nip.io/ → 搜尋「王」→ 點王慧明 (TEST-W007)。
+📺 開始錄屏 → 打開 https://47.84.230.19.nip.io/ → 點頂部金色 **⭐ Track 1 demo patient · 王阿姨四幕劇** banner → 直接跳王阿姨病例頁。（不用搜尋，banner 是 hackathon demo 特製置頂入口）
 
 🎤 **EN**:
 > Meet Auntie Wang. Sixty-eight, female. She's been to this clinic four times over nine months.
@@ -90,10 +90,10 @@ Meet Auntie Wang, 68 F, four visits over nine months
 📺 病例頁 zoom-in / 滑鼠停在心臟層上半 — 紅旗、慢性病、長期用藥區。
 
 🎤 **EN**:
-> Look at her heart layer. **One confirmed red flag** — occasional forgetfulness. **One chronic problem** — hypertension. **One long-term medication** — amlodipine. **And a blood-pressure baseline across all four visits.**
+> Look at her heart layer. **One confirmed red flag** — occasional forgetfulness, first observed at visit 2026-02-15, confirmed at visit 2026-06-26. **One chronic problem** — hypertension, diagnosed at visit 2025-09-20. **One long-term medication** — amlodipine. **And a BP baseline across all four visits.** Notice every entry shows the visit it came from. We'll need that in a moment.
 
 🎤 **ZH**:
-> 看一下她的心臟層。**一個確認的紅旗** — 偶爾忘東西。**一個慢性病** — 高血壓。**一個長期用藥** — amlodipine。**還有跨四次就診的血壓基線**。
+> 看一下她的心臟層。**一個確認的紅旗** — 偶爾忘東西，首次觀察是 2026-02-15、確認是 2026-06-26。**一個慢性病** — 高血壓，2025-09-20 診斷。**一個長期用藥** — amlodipine。**跨四次就診的血壓基線**。注意每一條都標了出處的就診日期。等下要用到。
 
 💬（三段、跟著 voiceover 切換）:
 ```
@@ -148,10 +148,10 @@ We click "Run AI Retrospective Review" on visit 4
 📺 看 loading 畫面（CapCut 後製把 30 秒 loading 時間軸 **加速到 3 秒**、加個 ⏳ tick 動畫）。
 
 🎤 **EN**:
-> The system reconstructs the heart layer **as it was at that visit** — not as it is today. This is critical. We want to know what was knowable **then**, not retroactively biased by what we know now. It also injects every prior visit's diagnosis and prescription as context. Then four Qwen3.7-max agents run in parallel.
+> The system reconstructs the heart layer **as it was at that visit** — not as it is today. And it **shows you what it excluded**. Right in the summary panel: *the forgetfulness flag was first observed only on 2026-02-15, so for an earlier visit it's filtered out. Nine BP measurements after this visit are excluded.* The AI literally cannot see them. This is the no-hindsight guarantee, **visible in the UI, not just claimed**.
 
 🎤 **ZH**:
-> 系統會把心臟層 **還原到那次就診當下的樣子** — 不是用今天的視角。這非常重要。我們要看的是 **當時可知的訊息**，不能用事後諸葛去回頭審判。系統同時把每一次過去就診的診斷和處方都灌進來。然後四個 Qwen3.7-max agent 同時跑。
+> 系統把心臟層 **還原到那次就診當下的樣子** — 而且 **告訴你它過濾掉了什麼**。Summary panel 直接列出來：「偶爾忘東西這個紅旗是 2026-02-15 才出現的、早一點的就診看不到。九筆之後的血壓測量也排除掉了。」AI 真的看不見這些東西。「沒有先知能力」這件事是 **UI 直接證明，不是用嘴講**。
 
 💬（兩段）:
 ```

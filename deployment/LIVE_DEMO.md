@@ -6,7 +6,7 @@
 
 **👉 https://47.84.230.19.nip.io/**
 
-Should auto-redirect to `/sentinel/patients` (patient search page).
+Auto-redirects to `/sentinel/patients`. **A gold highlight banner at the top of the search page links directly to the Track 1 demo patient (Auntie Wang) — one click, no searching needed.**
 
 ---
 
@@ -14,21 +14,24 @@ Should auto-redirect to `/sentinel/patients` (patient search page).
 
 ### Scene 1: longitudinal memory across visits
 
-1. On the patient search page, type **`王`** → click the patient **王慧明 (王阿姨)** (`TEST-W007`).
-2. You see her heart layer accumulated across 4 visits over 9 months:
-   - 1 **confirmed red flag**: "偶爾忘東西" (occasional forgetfulness, escalated from `to_observe` → `confirmed` by Phase 5 auto-evolution)
-   - 1 chronic problem: hypertension
+1. On the patient search page, **click the gold `⭐ Track 1 demo patient` banner** at the top (or type `王` to search for **王慧明 / Auntie Wang**, `TEST-W007`).
+2. You see her heart layer accumulated across 4 visits over 9 months. **Each row shows its visit-of-origin timestamp** — so you can see exactly *when* each piece of memory was first observed:
+   - 1 **confirmed red flag**: "偶爾忘東西" (occasional forgetfulness) — *first observed at visit 2026-02-15, confirmed at visit 2026-06-26*
+   - 1 chronic problem: hypertension — *diagnosed at visit 2025-09-20*
    - 1 long-term med: amlodipine
-   - BP/HR baseline trend chart
+   - BP/HR baseline trend across all 4 visits
+
+3. The visit timeline below shows all 4 visits with their relative time (`3 days ago`, `9 months ago`, etc.) and a `🟢 Latest visit` badge on the most recent — so you can see at a glance what's past vs current.
 
 ### Scene 2: retrospective AI review (Mode A reconstruct)
 
-3. Scroll to visit timeline → click any visit row → click **「🔁 跑 AI 回顧」**.
-4. The system:
+4. Scroll to visit timeline → click any visit row → click **「🔁 跑 AI 回顧 / Run AI Retrospective Review」**.
+5. The system:
    - Reconstructs the heart layer **as it was at that visit** (using `reconstruct_heart_at` + before-visit snapshot)
    - Injects all *prior* visits' diagnosis + Rx (`_build_past_visits_summary`)
    - Runs 4 Qwen3.7-max agents (intake / triage / audit / education)
-5. For **visit 4 (2026-06-26)** the audit agent flags **ibuprofen ↔ amlodipine BP antagonism** — a finding the doctor missed at the time.
+6. **The review panel's `summary_text` explicitly lists what was excluded by reconstruction** — e.g. *"⊘ flag: 偶爾忘東西 (first observed 2026-02-15, after this visit) · baselines: 9 measurement(s) recorded after this visit"*. This is the no-hindsight guarantee, visible in the UI rather than just claimed.
+7. For **visit 4 (2026-06-26)** the audit agent flags **ibuprofen ↔ amlodipine BP antagonism** — a finding the doctor missed at the time.
 
 ### Scene 3: reverse-training the doctor (watchlist)
 
