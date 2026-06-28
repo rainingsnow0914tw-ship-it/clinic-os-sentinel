@@ -240,7 +240,7 @@ We chose a third path: **let Caddy on ECS serve the SPA directly** (`try_files {
 
 ## 9. What's outside the diagram (deferred / future)
 
-- **Phase 2.5 — backfill heart-layer snapshots** for the 169 mock visits (currently Mode A falls back to `reconstruct_heart_at` for those; Auntie Wang has real snapshots).
+- **Snapshot backfill for legacy visits.** Auntie Wang's quartet ships with full `before_visit` / `after_visit` snapshots; `reconstruct_heart_at()` handles the rest of the 169 mock visits correctly today. Future work moves them onto the snapshot path for parity (not for correctness).
 - **Vision / ASR** (qwen3.7-plus / paraformer-v2 wired but UI integration parked post-hackathon).
 - **Multi-tenant auth** (currently `SENTINEL_DEV_BYPASS_AUTH=true` for judge access; Firebase wiring exists but is dormant).
 - **CI/CD** (38 commits in 3 days are the iteration log; future migration to GitHub Actions).
