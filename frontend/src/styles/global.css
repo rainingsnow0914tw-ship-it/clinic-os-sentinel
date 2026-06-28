@@ -51,6 +51,85 @@ button { cursor: pointer; font: inherit; }
 .app-sidebar nav a:hover { background: #374151; color: #fff; }
 .app-sidebar nav a.active { background: #2563eb; color: #fff; }
 
+/* === Sidebar: live demo vs future modules (Qwen Cloud Hackathon 2026) === */
+.app-sidebar h1 .sidebar-sub {
+  display: block;
+  font-size: 10px;
+  font-weight: 400;
+  opacity: 0.5;
+  margin-top: 2px;
+  letter-spacing: 0.02em;
+}
+.app-sidebar .nav-section-label {
+  padding: 12px 16px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.app-sidebar .nav-section-label .bi-en {
+  display: block;
+  font-size: 9px;
+  font-weight: 400;
+  text-transform: none;
+  opacity: 0.7;
+  margin-top: 1px;
+}
+.app-sidebar nav .nav-live {
+  display: block;
+  padding: 10px 16px;
+  color: #d1d5db;
+  text-decoration: none;
+  border-left: 3px solid transparent;
+}
+.app-sidebar nav .nav-live.active {
+  background: #2563eb;
+  color: #fff;
+  border-left-color: #93c5fd;
+}
+.app-sidebar nav .nav-live .bi-en {
+  display: block;
+  font-size: 10px;
+  opacity: 0.7;
+  margin-top: 1px;
+  font-weight: 400;
+}
+
+/* future / coming-soon nav items: greyed out, not clickable */
+.app-sidebar nav .nav-soon {
+  display: block;
+  padding: 8px 16px;
+  color: #6b7280;
+  opacity: 0.45;
+  cursor: not-allowed;
+  user-select: none;
+  position: relative;
+}
+.app-sidebar nav .nav-soon::after {
+  content: 'Coming soon';
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 9px;
+  background: #374151;
+  color: #d1d5db;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-style: italic;
+  letter-spacing: 0.02em;
+}
+.app-sidebar nav .nav-soon .bi-en {
+  display: block;
+  font-size: 10px;
+  opacity: 0.7;
+  margin-top: 1px;
+}
+.app-sidebar nav .nav-soon:hover {
+  background: none;
+}
+
 .app-topbar {
   grid-area: topbar;
   background: #fff;
