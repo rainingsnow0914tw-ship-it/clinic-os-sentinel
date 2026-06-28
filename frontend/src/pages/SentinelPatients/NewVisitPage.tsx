@@ -7,6 +7,8 @@
  *
  * Phase 4.2 會加: 4 agent 串通 (intake/triage/audit/education) + ai_drafts
  * Phase 4.3 會加: ai_drafts review (accept/dismiss)
+ *
+ * Bilingual labels (Qwen Cloud Hackathon 2026): 中文 UI + English overlay
  */
 import { FormEvent, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -40,7 +42,6 @@ function NewVisitPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // form state
   const [cc, setCc] = useState('');
   const [hpi, setHpi] = useState('');
   const [pe, setPe] = useState('');
@@ -51,9 +52,8 @@ function NewVisitPage() {
   const [temp, setTemp] = useState('');
   const [spo2, setSpo2] = useState('');
   const [freeNotes, setFreeNotes] = useState('');
-  const [rxInput, setRxInput] = useState('');   // Phase 4.2b: 處方一行一個
+  const [rxInput, setRxInput] = useState('');
 
-  // Phase 4.2a/b: sentinel agent panel
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [intakeResult, setIntakeResult] = useState<IntakeResponse | null>(null);
@@ -61,18 +61,16 @@ function NewVisitPage() {
   const [educationResult, setEducationResult] = useState<EducationResponse | null>(null);
   const [auditResult, setAuditResult] = useState<AuditResponse | null>(null);
 
-  // Phase 7.2: 醫師個人 watchlist (banner 提醒)
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
 
-  // Phase 7.4: 結構化 Rx form (分類 dropdown / 搜尋 / 次/顆/天)
   type RxRow = {
-    category: string;       // 分類 (或 '__search__' 直接搜尋模式)
-    drug?: DrugItem;        // 選定的 drug
-    q: string;              // type-ahead 搜尋字串
+    category: string;
+    drug?: DrugItem;
+    q: string;
     searching: boolean;
     searchResults: DrugItem[];
-    freq: string;           // qd / bid / tid / qid / q6h / q8h / q12h / prn
-    perDose: number;        // 每次幾顆
+    freq: string;
+    perDose: number;
     days: number;
   };
   const [rxRows, setRxRows] = useState<RxRow[]>([]);
@@ -85,7 +83,6 @@ function NewVisitPage() {
     prn: 1,
   } as Record<string, number>)[f] || 1;
 
-  // Audit 學名雙寫: brand (學名) 讓 AI 用學名查 openFDA/RxNorm 才命中
   function audit_drug_label(drug: DrugItem): string {
     const base = (drug.code.split('_')[0] || '').toUpperCase();
     const OVERRIDE: Record<string, string> = {
@@ -98,8 +95,7 @@ function NewVisitPage() {
       'COUGH', 'GENERIC', 'GUAIFENESIN', 'ARTIFICIAL', 'ORS', 'SALINE', 'VIT',
     ]);
     if (OVERRIDE[base]) return `${drug.name} (${OVERRIDE[base]})`;
-    if (NON_DRUG_PREFIX.has(base)) return drug.name;   // 不是學名前綴, 不加
-    // 一般 code: AMLODIPINE_5 / AZITHROMYCIN_250 / ATORVASTATIN_20 -> 加學名
+    if (NON_DRUG_PREFIX.has(base)) return drug.name;
     const generic = base.toLowerCase();
     if (generic.length < 4) return drug.name;
     return `${drug.name} (${generic})`;
@@ -138,18 +134,14 @@ function NewVisitPage() {
     if (!patientId) return;
     getPatientDetail(patientId)
       .then(setPatient)
-      .catch((e) => setError(e?.message ?? '載入病人資料失敗'))
+      .catch((e) => setError(e?.message ?? '載入病人資料失敗 / Load patient failed'))
       .finally(() => setLoading(false));
   }, [patientId]);
 
   useEffect(() => {
-    // Phase 7.2: 載入醫師 watchlist
     listWatchlist()
       .then((r) => setWatchlist(r.items))
-      .catch(() => {
-        /* watchlist 失敗不阻塞新就診 */
-      });
-    // Phase 7.4: 載入 drug 分類
+      .catch(() => {});
     listDrugCategories()
       .then(setDrugCats)
       .catch(() => {});
@@ -158,7 +150,7 @@ function NewVisitPage() {
   async function runAiSuggestions() {
     if (!patient) return;
     if (!cc.trim()) {
-      setAiError('CC 必填才能跑 AI');
+      setAiError('CC 必填才能跑 AI / Chief complaint required to run AI');
       return;
     }
     setAiLoading(true);
@@ -168,11 +160,8 @@ function NewVisitPage() {
     setEducationResult(null);
     setAuditResult(null);
     try {
-      // 並行 call sentinel agents (Qwen 每個 5-15s, 並行加快)
       const hl = patient.heart_layer;
       const workingHypothesis = dx.trim() || cc;
-      // Phase 7.4: 從 form rxRows 取藥名 (drug.name) + 加上 textarea fallback
-      // Audit 優化: brand + 學名雙寫, 讓 Qwen 用學名查 openFDA / RxNorm 才命中
       const rxFromForm = rxRows.filter((r) => r.drug).map((r) => audit_drug_label(r.drug!));
       const rxFromText = rxInput.split('\n').map((s) => s.trim()).filter(Boolean);
       const rxList = [...rxFromForm, ...rxFromText];
@@ -190,18 +179,17 @@ function NewVisitPage() {
       if (eduRes.status === 'fulfilled') setEducationResult(eduRes.value);
       if (auditRes.status === 'fulfilled') setAuditResult(auditRes.value);
 
-      // 抓 error 顯示 (skip 不算錯)
       const errs = [intakeRes, triageRes, eduRes, auditRes]
         .filter((r) => r.status === 'rejected')
         .map((r: any) => r.reason?.message ?? String(r.reason))
         .filter((m) => !m.startsWith('skip:'));
       if (errs.length === 4) {
-        setAiError(`所有 agent 都失敗：${errs.join(' | ')}`);
+        setAiError(`所有 agent 都失敗 / All agents failed: ${errs.join(' | ')}`);
       } else if (errs.length > 0) {
-        setAiError(`部分 agent 失敗：${errs.join(' | ')}`);
+        setAiError(`部分 agent 失敗 / Some agents failed: ${errs.join(' | ')}`);
       }
     } catch (e: any) {
-      setAiError(e?.message ?? 'AI 跑失敗');
+      setAiError(e?.message ?? 'AI 跑失敗 / AI run failed');
     } finally {
       setAiLoading(false);
     }
@@ -211,7 +199,7 @@ function NewVisitPage() {
     e.preventDefault();
     if (!patientId) return;
     if (!cc.trim()) {
-      setError('主訴 (CC) 必填');
+      setError('主訴 (CC) 必填 / Chief complaint required');
       return;
     }
     setSaving(true);
@@ -224,7 +212,6 @@ function NewVisitPage() {
       if (temp) vs.temperature_c = parseFloat(temp);
       if (spo2) vs.oxygen_saturation = parseInt(spo2);
 
-      // Phase 4.2c: 把 AI panel 結果 dump 成 ai_drafts (status='accepted_with_visit')
       const aiDrafts: { agent_type: 'intake' | 'triage' | 'audit' | 'education'; payload: any }[] = [];
       if (intakeResult) aiDrafts.push({ agent_type: 'intake', payload: intakeResult });
       if (triageResult) aiDrafts.push({ agent_type: 'triage', payload: triageResult });
@@ -232,7 +219,6 @@ function NewVisitPage() {
       if (educationResult) aiDrafts.push({ agent_type: 'education', payload: educationResult });
 
       const rxLines = rxInput.split('\n').map((s) => s.trim()).filter(Boolean);
-      // Phase 7.4: 結構化 Rx items (主要途徑)
       const rxItems: PrescriptionItemInput[] = rxRows
         .filter((r) => r.drug)
         .map((r) => ({
@@ -253,53 +239,52 @@ function NewVisitPage() {
         prescription_lines: rxLines.length > 0 ? rxLines : undefined,
         prescription_items: rxItems.length > 0 ? rxItems : undefined,
       });
-      // 寫進 DB 完成 → 回 detail 頁
       navigate(`/sentinel/patients/${patientId}?new_visit=${res.visit_id}`);
     } catch (e: any) {
-      setError(e?.response?.data?.detail ?? e?.message ?? '建立失敗');
+      setError(e?.response?.data?.detail ?? e?.message ?? '建立失敗 / Create failed');
     } finally {
       setSaving(false);
     }
   }
 
-  if (loading) return <div className="sentinel-page"><div className="loading">載入中...</div></div>;
-  if (!patient) return <div className="sentinel-page"><div className="error">病人不存在</div></div>;
+  if (loading) return <div className="sentinel-page"><div className="loading">載入中... / Loading...</div></div>;
+  if (!patient) return <div className="sentinel-page"><div className="error">病人不存在 / Patient not found</div></div>;
 
-  // 心臟層快速摘要 (給醫師寫病歷時參考)
   const hl = patient.heart_layer;
   const redFlags = hl.flags.filter((f) => f.severity === 'red');
 
   return (
     <div className="sentinel-page">
-      <Link to={`/sentinel/patients/${patientId}`} className="back-link">← 回病例</Link>
+      <Link to={`/sentinel/patients/${patientId}`} className="back-link">
+        ← 回病例 / Back to chart
+      </Link>
 
       <div className="detail-header">
         <div className="name">
-          🩺 新就診：{patient.name}{' '}
+          🩺 新就診 / New Visit：{patient.name}{' '}
           <span style={{ color: '#6b7280', fontWeight: 'normal', fontSize: 14 }}>
             ({patient.gender ?? '?'} / {patient.date_of_birth ?? '?'})
           </span>
         </div>
         <div className="meta">
-          {patient.id_number ?? '-'} · 今天 {new Date().toISOString().split('T')[0]}
+          {patient.id_number ?? '-'} · 今天 / today {new Date().toISOString().split('T')[0]}
         </div>
 
-        {/* 心臟層 quick reference */}
         {(redFlags.length > 0 || hl.problems.length > 0) && (
           <div className="quick-ref">
             {redFlags.length > 0 && (
               <div className="quick-ref-row red">
-                ⚠ 紅旗: {redFlags.map((f) => f.content).join('、')}
+                ⚠ 紅旗 / Red flags: {redFlags.map((f) => f.content).join('、')}
               </div>
             )}
             {hl.problems.length > 0 && (
               <div className="quick-ref-row">
-                💢 慢性病: {hl.problems.map((p) => p.problem_name).join('、')}
+                💢 慢性病 / Chronic: {hl.problems.map((p) => p.problem_name).join('、')}
               </div>
             )}
             {hl.medications.length > 0 && (
               <div className="quick-ref-row">
-                💊 長期用藥: {hl.medications.slice(0, 3).map((m) => `${m.medication_name} ${m.dosage ?? ''}`.trim()).join('、')}
+                💊 長期用藥 / Long-term meds: {hl.medications.slice(0, 3).map((m) => `${m.medication_name} ${m.dosage ?? ''}`.trim()).join('、')}
                 {hl.medications.length > 3 && ` ...+${hl.medications.length - 3}`}
               </div>
             )}
@@ -311,8 +296,10 @@ function NewVisitPage() {
       {watchlist.length > 0 && (
         <details className="doctor-watchlist-banner" open>
           <summary>
-            📌 你過去學到的 ({watchlist.length} 條 watchlist)
-            <span className="watchlist-hint">寫病歷時順手對照</span>
+            📌 你過去學到的 / Your past lessons ({watchlist.length} 條 watchlist)
+            <span className="watchlist-hint">
+              寫病歷時順手對照 · review while charting
+            </span>
           </summary>
           <ul className="watchlist-list">
             {watchlist.map((w) => (
@@ -320,7 +307,9 @@ function NewVisitPage() {
                 <div className="watchlist-pattern">
                   <strong>📌 {w.pattern}</strong>
                   {w.triggered_count > 0 && (
-                    <span className="watchlist-trigger-count">已撞 {w.triggered_count} 次</span>
+                    <span className="watchlist-trigger-count">
+                      已撞 {w.triggered_count} 次 / triggered {w.triggered_count}×
+                    </span>
                   )}
                 </div>
                 <div className="watchlist-lesson">{w.lesson_text}</div>
@@ -334,10 +323,12 @@ function NewVisitPage() {
 
       <form onSubmit={onSubmit} className="new-visit-form">
         <label>
-          <span className="field-label">CC 主訴 <span className="required">*</span></span>
+          <span className="field-label">
+            CC 主訴 / Chief complaint <span className="required">*</span>
+          </span>
           <input
             type="text"
-            placeholder="例: 頭痛 2 天"
+            placeholder="例 / e.g.: 頭痛 2 天 (headache for 2 days)"
             value={cc}
             onChange={(e) => setCc(e.target.value)}
             required
@@ -345,42 +336,42 @@ function NewVisitPage() {
         </label>
 
         <label>
-          <span className="field-label">HPI 現病史</span>
+          <span className="field-label">HPI 現病史 / History of present illness</span>
           <textarea
             rows={3}
-            placeholder="例: 病人 2 天前出現後腦脹痛, 晨起明顯, 無噁心嘔吐, 自測 BP 158/95"
+            placeholder="例 / e.g.: 病人 2 天前出現後腦脹痛, 晨起明顯, 無噁心嘔吐, 自測 BP 158/95"
             value={hpi}
             onChange={(e) => setHpi(e.target.value)}
           />
         </label>
 
         <label>
-          <span className="field-label">PE 查體</span>
+          <span className="field-label">PE 查體 / Physical examination</span>
           <textarea
             rows={3}
-            placeholder="例: 神清, BP 158/95, HR 78, 心音清晰、無雜音, 雙肺呼吸音清"
+            placeholder="例 / e.g.: 神清, BP 158/95, HR 78, 心音清晰、無雜音, 雙肺呼吸音清"
             value={pe}
             onChange={(e) => setPe(e.target.value)}
           />
         </label>
 
         <fieldset className="vital-fieldset">
-          <legend>生命徵象</legend>
+          <legend>生命徵象 / Vital signs</legend>
           <div className="vital-grid">
             <label>
-              <span className="field-label">收縮壓 SBP</span>
+              <span className="field-label">收縮壓 SBP / Systolic BP</span>
               <input type="number" placeholder="120" value={sbp} onChange={(e) => setSbp(e.target.value)} />
             </label>
             <label>
-              <span className="field-label">舒張壓 DBP</span>
+              <span className="field-label">舒張壓 DBP / Diastolic BP</span>
               <input type="number" placeholder="80" value={dbp} onChange={(e) => setDbp(e.target.value)} />
             </label>
             <label>
-              <span className="field-label">心率 HR</span>
+              <span className="field-label">心率 HR / Heart rate</span>
               <input type="number" placeholder="78" value={hr} onChange={(e) => setHr(e.target.value)} />
             </label>
             <label>
-              <span className="field-label">體溫 °C</span>
+              <span className="field-label">體溫 / Temperature °C</span>
               <input type="number" step="0.1" placeholder="36.7" value={temp} onChange={(e) => setTemp(e.target.value)} />
             </label>
             <label>
@@ -391,19 +382,23 @@ function NewVisitPage() {
         </fieldset>
 
         <label>
-          <span className="field-label">IMP 診斷</span>
+          <span className="field-label">IMP 診斷 / Impression / Diagnosis</span>
           <input
             type="text"
-            placeholder="例: 原發性高血壓 (未達標)"
+            placeholder="例 / e.g.: 原發性高血壓 (未達標) (essential hypertension, uncontrolled)"
             value={dx}
             onChange={(e) => setDx(e.target.value)}
           />
         </label>
 
         <div className="rx-form-section">
-          <span className="field-label">💊 處方 (選分類 → 選藥 → 用法)</span>
+          <span className="field-label">
+            💊 處方 / Prescriptions (選分類 → 選藥 → 用法 · category → drug → usage)
+          </span>
           {rxRows.length === 0 && (
-            <div className="rx-empty-hint">尚無處方, 點下方「+ 加處方」開始</div>
+            <div className="rx-empty-hint">
+              尚無處方, 點下方「+ 加處方」開始 · No prescription yet — click "+ Add Rx" below to start
+            </div>
           )}
           {rxRows.map((row, i) => (
             <div className="rx-form-row" key={i}>
@@ -417,11 +412,11 @@ function NewVisitPage() {
                   }}
                   className="rx-cat-select"
                 >
-                  <option value="">-- 選分類 --</option>
+                  <option value="">-- 選分類 / pick category --</option>
                   {drugCats.map((c) => (
                     <option key={c.category} value={c.category}>{c.category} ({c.count})</option>
                   ))}
-                  <option value="__search__">🔍 直接搜尋</option>
+                  <option value="__search__">🔍 直接搜尋 / search directly</option>
                 </select>
 
                 {row.category && row.category !== '__search__' && (
@@ -433,7 +428,7 @@ function NewVisitPage() {
                     }}
                     className="rx-drug-select"
                   >
-                    <option value="">-- 選藥 --</option>
+                    <option value="">-- 選藥 / pick drug --</option>
                     {(drugsByCat[row.category] || []).map((d) => (
                       <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
                     ))}
@@ -444,7 +439,7 @@ function NewVisitPage() {
                   <div className="rx-search-wrap">
                     <input
                       type="text"
-                      placeholder="輸入藥名 / 學名 / code..."
+                      placeholder="輸入藥名 / 學名 / code · type drug name / generic / code"
                       value={row.q}
                       onChange={(e) => handleRxSearch(i, e.target.value)}
                       className="rx-search-input"
@@ -463,12 +458,19 @@ function NewVisitPage() {
                       </div>
                     )}
                     {row.drug && (
-                      <div className="rx-chosen-inline">✓ 已選: {row.drug.name} ({row.drug.code})</div>
+                      <div className="rx-chosen-inline">
+                        ✓ 已選 / picked: {row.drug.name} ({row.drug.code})
+                      </div>
                     )}
                   </div>
                 )}
 
-                <button type="button" onClick={() => deleteRxRow(i)} className="btn-rx-delete" title="刪除此處方">×</button>
+                <button
+                  type="button"
+                  onClick={() => deleteRxRow(i)}
+                  className="btn-rx-delete"
+                  title="刪除此處方 / Delete this Rx"
+                >×</button>
               </div>
 
               <div className="rx-row-line rx-dose-line">
@@ -477,14 +479,14 @@ function NewVisitPage() {
                   onChange={(e) => updateRxRow(i, { freq: e.target.value })}
                   className="rx-freq-select"
                 >
-                  <option value="qd">QD 一日一次</option>
-                  <option value="bid">BID 一日兩次</option>
-                  <option value="tid">TID 一日三次</option>
-                  <option value="qid">QID 一日四次</option>
-                  <option value="q6h">Q6H 每 6 hr</option>
-                  <option value="q8h">Q8H 每 8 hr</option>
-                  <option value="q12h">Q12H 每 12 hr</option>
-                  <option value="prn">PRN 需要時</option>
+                  <option value="qd">QD 一日一次 / once daily</option>
+                  <option value="bid">BID 一日兩次 / twice daily</option>
+                  <option value="tid">TID 一日三次 / three times daily</option>
+                  <option value="qid">QID 一日四次 / four times daily</option>
+                  <option value="q6h">Q6H 每 6 hr / every 6 hours</option>
+                  <option value="q8h">Q8H 每 8 hr / every 8 hours</option>
+                  <option value="q12h">Q12H 每 12 hr / every 12 hours</option>
+                  <option value="prn">PRN 需要時 / as needed</option>
                 </select>
                 <input
                   type="number"
@@ -493,9 +495,9 @@ function NewVisitPage() {
                   value={row.perDose}
                   onChange={(e) => updateRxRow(i, { perDose: parseInt(e.target.value) || 1 })}
                   className="rx-num-input"
-                  title="每次幾顆 / 每次劑量"
+                  title="每次幾顆 / dose per take"
                 />
-                <span className="rx-dose-label">顆/次 ×</span>
+                <span className="rx-dose-label">顆/次 / per dose ×</span>
                 <input
                   type="number"
                   min={1}
@@ -503,21 +505,29 @@ function NewVisitPage() {
                   value={row.days}
                   onChange={(e) => updateRxRow(i, { days: parseInt(e.target.value) || 1 })}
                   className="rx-num-input"
-                  title="開幾天"
+                  title="開幾天 / days"
                 />
-                <span className="rx-dose-label">天</span>
+                <span className="rx-dose-label">天 / days</span>
                 {row.drug && (
                   <span className="rx-total-qty">
-                    共 {freqToCount(row.freq) * row.perDose * row.days} {row.drug.unit}
+                    共 / total {freqToCount(row.freq) * row.perDose * row.days} {row.drug.unit}
                   </span>
                 )}
               </div>
             </div>
           ))}
-          <button type="button" onClick={addRxRow} className="btn-add-rx">+ 加處方</button>
+          <button type="button" onClick={addRxRow} className="btn-add-rx">
+            <span className="bi-stack">
+              <span>+ 加處方</span>
+              <span className="bi-en">Add Rx</span>
+            </span>
+          </button>
 
           <details className="rx-advanced">
-            <summary>📝 或者直接打字 (一行一個藥, 進階模式)</summary>
+            <summary>
+              📝 或者直接打字 (一行一個藥, 進階模式) ·
+              Or type directly (one drug per line, advanced)
+            </summary>
             <textarea
               rows={3}
               placeholder={'Amlodipine 5mg qd\nIbuprofen 400mg tid prn'}
@@ -528,53 +538,89 @@ function NewVisitPage() {
         </div>
 
         <label>
-          <span className="field-label">補充筆記 (free notes)</span>
+          <span className="field-label">補充筆記 / Free notes</span>
           <textarea
             rows={2}
-            placeholder="其他補充"
+            placeholder="其他補充 / Other notes"
             value={freeNotes}
             onChange={(e) => setFreeNotes(e.target.value)}
           />
         </label>
 
         <div className="form-actions">
-          <Link to={`/sentinel/patients/${patientId}`} className="btn-cancel">取消</Link>
+          <Link to={`/sentinel/patients/${patientId}`} className="btn-cancel">
+            <span className="bi-stack">
+              <span>取消</span>
+              <span className="bi-en">Cancel</span>
+            </span>
+          </Link>
           <button
             type="button"
             onClick={runAiSuggestions}
             disabled={aiLoading || !cc.trim()}
             className="btn-ai"
-            title="並行跑 sentinel intake/triage/education，每個 Qwen 5-15s"
+            title="並行跑 sentinel intake/triage/audit/education / Run 4 agents in parallel"
           >
-            {aiLoading ? '🤖 AI 跑中... (5-30s)' : '🤖 跑 AI 建議'}
+            {aiLoading ? (
+              <span className="bi-stack">
+                <span>🤖 AI 跑中... (5-30s)</span>
+                <span className="bi-en">AI running... (5-30 s)</span>
+              </span>
+            ) : (
+              <span className="bi-stack">
+                <span>🤖 跑 AI 建議</span>
+                <span className="bi-en">Run AI Suggestions</span>
+              </span>
+            )}
           </button>
           <button type="submit" disabled={saving} className="btn-primary">
-            {saving ? '建立中...' : '✅ 完成就診'}
+            {saving ? (
+              <span className="bi-stack">
+                <span>建立中...</span>
+                <span className="bi-en">Creating...</span>
+              </span>
+            ) : (
+              <span className="bi-stack">
+                <span>✅ 完成就診</span>
+                <span className="bi-en">Finish Visit</span>
+              </span>
+            )}
           </button>
         </div>
 
         <div style={{ marginTop: 8, color: '#9ca3af', fontSize: 12 }}>
           Phase 4.2a/b: 「跑 AI 建議」並行 call sentinel 4 agent (intake/triage/audit/education),
-          Qwen3.7-max 結果在下方 panel。Phase 4.2c 會加 ai_drafts table 寫入 + 接受寫進病歷。
+          Qwen3.7-max 結果在下方 panel。
+          <span className="bi-en" style={{ display: 'block', marginTop: 2 }}>
+            "Run AI Suggestions" fans out four sentinel agents in parallel (Qwen3.7-max);
+            results appear in the panel below.
+          </span>
         </div>
       </form>
 
       {/* AI 建議 panel */}
       {(aiError || intakeResult || triageResult || educationResult || auditResult) && (
         <div className="ai-panel">
-          <h3>🤖 Sentinel AI 建議</h3>
+          <h3>
+            🤖 Sentinel AI 建議
+            <span className="bi-en">Sentinel AI Suggestions</span>
+          </h3>
           {aiError && <div className="error" style={{ marginBottom: 8 }}>⚠️ {aiError}</div>}
 
           {auditResult && (
             <div className="ai-section ai-section-audit">
               <div className="ai-section-title">
-                🚨 後閘門 (Audit) · {auditResult.model_used}
+                🚨 後閘門 / Audit · {auditResult.model_used}
               </div>
               {auditResult.contextual_risks.length > 0 && (
                 <ul className="ai-findings">
                   {auditResult.contextual_risks.map((r, i) => (
                     <li key={`ctx-${i}`}>
-                      {r.needs_confirmation && <span className="ai-section-tag" style={{ background: '#fee2e2', color: '#991b1b' }}>⚠ 需確認</span>}
+                      {r.needs_confirmation && (
+                        <span className="ai-section-tag" style={{ background: '#fee2e2', color: '#991b1b' }}>
+                          ⚠ 需確認 / needs confirmation
+                        </span>
+                      )}
                       <strong>{r.drug}</strong>: {r.risk}
                       <div className="ai-refs">triggered by: {r.triggered_by}</div>
                     </li>
@@ -583,7 +629,9 @@ function NewVisitPage() {
               )}
               {auditResult.rule_engine_findings.filter((f) => f.description && f.description.trim()).length > 0 && (
                 <div style={{ marginTop: 6 }}>
-                  <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>規則引擎發現:</div>
+                  <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
+                    規則引擎發現 / Rule engine findings:
+                  </div>
                   <ul className="ai-findings">
                     {auditResult.rule_engine_findings
                       .filter((f) => f.description && f.description.trim())
@@ -593,7 +641,7 @@ function NewVisitPage() {
                           {f.drug_a} ↔ {f.drug_b}: {f.description}
                           {f.source_url && (
                             <div className="ai-refs">
-                              · <a href={f.source_url} target="_blank" rel="noreferrer">來源</a>
+                              · <a href={f.source_url} target="_blank" rel="noreferrer">來源 / source</a>
                             </div>
                           )}
                         </li>
@@ -603,10 +651,12 @@ function NewVisitPage() {
               )}
               {auditResult.contextual_risks.length === 0 &&
                 auditResult.rule_engine_findings.length === 0 && (
-                  <div style={{ color: '#6b7280', fontSize: 12 }}>(無風險、處方 OK)</div>
+                  <div style={{ color: '#6b7280', fontSize: 12 }}>
+                    (無風險、處方 OK / no risk, Rx OK)
+                  </div>
                 )}
               {auditResult.unknowns.length > 0 && (
-                <div className="ai-note">未知藥物: {auditResult.unknowns.join(', ')}</div>
+                <div className="ai-note">未知藥物 / Unknown drugs: {auditResult.unknowns.join(', ')}</div>
               )}
               <div className="ai-note">{auditResult.closing_note}</div>
             </div>
@@ -615,7 +665,7 @@ function NewVisitPage() {
           {intakeResult && (
             <div className="ai-section ai-section-intake">
               <div className="ai-section-title">
-                🚪 入口偵查官 (Intake) · {intakeResult.model_used}
+                🚪 入口偵查官 / Intake · {intakeResult.model_used}
               </div>
               {intakeResult.summary && <div className="ai-summary">{intakeResult.summary}</div>}
               {intakeResult.findings.length > 0 ? (
@@ -627,7 +677,7 @@ function NewVisitPage() {
                   ))}
                 </ul>
               ) : (
-                <div style={{ color: '#6b7280', fontSize: 12 }}>(沒 finding)</div>
+                <div style={{ color: '#6b7280', fontSize: 12 }}>(沒 finding / no finding)</div>
               )}
             </div>
           )}
@@ -635,10 +685,10 @@ function NewVisitPage() {
           {triageResult && (
             <div className="ai-section ai-section-triage">
               <div className="ai-section-title">
-                🚦 前閘門 (Triage) · {triageResult.model_used}
+                🚦 前閘門 / Triage · {triageResult.model_used}
               </div>
               {triageResult.has_conflict && (
-                <div className="ai-conflict">⚠ 矛盾: {triageResult.conflict_summary}</div>
+                <div className="ai-conflict">⚠ 矛盾 / Conflict: {triageResult.conflict_summary}</div>
               )}
               {triageResult.differentials.length > 0 ? (
                 <ul className="ai-findings">
@@ -652,7 +702,9 @@ function NewVisitPage() {
                   ))}
                 </ul>
               ) : (
-                <div style={{ color: '#6b7280', fontSize: 12 }}>(無鑑別建議)</div>
+                <div style={{ color: '#6b7280', fontSize: 12 }}>
+                  (無鑑別建議 / no differentials suggested)
+                </div>
               )}
               <div className="ai-note">{triageResult.closing_note}</div>
             </div>
@@ -661,7 +713,7 @@ function NewVisitPage() {
           {educationResult && (
             <div className="ai-section ai-section-edu">
               <div className="ai-section-title">
-                📚 衛教官 (Education) · {educationResult.model_used}
+                📚 衛教官 / Education · {educationResult.model_used}
               </div>
               <div className="ai-advice">{educationResult.advice}</div>
             </div>
@@ -669,6 +721,10 @@ function NewVisitPage() {
 
           <div style={{ marginTop: 8, color: '#9ca3af', fontSize: 11 }}>
             * 醫師可看 AI 建議後修改上方 form 再 ✅ 完成就診 (AI 不會自動寫進病歷, ADR-006 精神)
+            <span className="bi-en" style={{ display: 'block', marginTop: 2 }}>
+              The doctor reviews AI suggestions then edits the form above before finishing the visit.
+              AI never auto-writes to the chart (per ADR-006).
+            </span>
           </div>
         </div>
       )}

@@ -9,6 +9,8 @@
  * UI 規則 (v0.3.1 §7.3):
  * - to_observe flag = 淡色 (badge.observe)
  * - confirmed flag  = 亮紅 (badge.confirmed)
+ *
+ * Bilingual labels (Qwen Cloud Hackathon 2026): 中文 UI + English overlay
  */
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -34,7 +36,6 @@ function PatientDetailPage() {
   const [detail, setDetail] = useState<PatientDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Phase 6: per-visit review state (Mode A/B 並存, switch 蓋掉前一個)
   const [reviewMap, setReviewMap] = useState<Record<string, ReviewState>>({});
 
   useEffect(() => {
@@ -42,7 +43,7 @@ function PatientDetailPage() {
     setLoading(true);
     getPatientDetail(patientId)
       .then(setDetail)
-      .catch((e) => setError(e?.message ?? '載入失敗'))
+      .catch((e) => setError(e?.message ?? '載入失敗 / Load failed'))
       .finally(() => setLoading(false));
   }, [patientId]);
 
@@ -54,12 +55,12 @@ function PatientDetailPage() {
     } catch (e: any) {
       setReviewMap((m) => ({
         ...m,
-        [visitId]: { loading: false, mode, error: e?.message ?? '回顧失敗' },
+        [visitId]: { loading: false, mode, error: e?.message ?? '回顧失敗 / Review failed' },
       }));
     }
   }
 
-  if (loading) return <div className="sentinel-page"><div className="loading">載入中...</div></div>;
+  if (loading) return <div className="sentinel-page"><div className="loading">載入中... / Loading...</div></div>;
   if (error)   return <div className="sentinel-page"><div className="error">⚠️ {error}</div></div>;
   if (!detail) return null;
 
@@ -68,9 +69,14 @@ function PatientDetailPage() {
   return (
     <div className="sentinel-page">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <Link to="/sentinel/patients" className="back-link">← 回搜尋</Link>
+        <Link to="/sentinel/patients" className="back-link">
+          ← 回搜尋 / Back to search
+        </Link>
         <Link to={`/sentinel/patients/${detail.id}/visit/new`} className="btn-primary" style={{ textDecoration: 'none' }}>
-          ➕ 新就診
+          <span className="bi-stack">
+            <span>➕ 新就診</span>
+            <span className="bi-en">New Visit</span>
+          </span>
         </Link>
       </div>
 
@@ -90,10 +96,10 @@ function PatientDetailPage() {
       <div className="heart-section">
         <h3>
           🚨 紅旗 / Flags
-          <span className="count">共 {hl.flags.length} 條</span>
+          <span className="count">共 {hl.flags.length} 條 / {hl.flags.length} entries</span>
         </h3>
         {hl.flags.length === 0 ? (
-          <div style={{ color: '#9ca3af', fontSize: 13 }}>(無紅旗)</div>
+          <div style={{ color: '#9ca3af', fontSize: 13 }}>(無紅旗 / no flags)</div>
         ) : (
           <ul className="heart-list">
             {hl.flags.map((f) => (
@@ -101,7 +107,7 @@ function PatientDetailPage() {
                 <div className="label">
                   <span className="name-text">{f.content}</span>
                   <div className="sub">
-                    {f.flag_type} · 來源 {f.flag_source}
+                    {f.flag_type} · 來源 / source {f.flag_source}
                   </div>
                 </div>
                 <div className="badges">
@@ -126,10 +132,10 @@ function PatientDetailPage() {
       <div className="heart-section">
         <h3>
           💢 慢性病 / Problems
-          <span className="count">共 {hl.problems.length} 條</span>
+          <span className="count">共 {hl.problems.length} 條 / {hl.problems.length} entries</span>
         </h3>
         {hl.problems.length === 0 ? (
-          <div style={{ color: '#9ca3af', fontSize: 13 }}>(無慢性病紀錄)</div>
+          <div style={{ color: '#9ca3af', fontSize: 13 }}>(無慢性病紀錄 / no chronic problems)</div>
         ) : (
           <ul className="heart-list">
             {hl.problems.map((p) => (
@@ -138,8 +144,8 @@ function PatientDetailPage() {
                   <span className="name-text">{p.problem_name}</span>
                   <div className="sub">
                     {p.icd10_code && <>ICD-10 {p.icd10_code} · </>}
-                    狀態 {p.control_status}
-                    {p.diagnosed_at && <> · 診斷 {p.diagnosed_at}</>}
+                    狀態 / status {p.control_status}
+                    {p.diagnosed_at && <> · 診斷 / diagnosed {p.diagnosed_at}</>}
                   </div>
                 </div>
               </li>
@@ -151,10 +157,10 @@ function PatientDetailPage() {
       <div className="heart-section">
         <h3>
           💊 長期用藥 / Medications
-          <span className="count">共 {hl.medications.length} 條</span>
+          <span className="count">共 {hl.medications.length} 條 / {hl.medications.length} entries</span>
         </h3>
         {hl.medications.length === 0 ? (
-          <div style={{ color: '#9ca3af', fontSize: 13 }}>(無長期用藥紀錄)</div>
+          <div style={{ color: '#9ca3af', fontSize: 13 }}>(無長期用藥紀錄 / no long-term meds)</div>
         ) : (
           <ul className="heart-list">
             {hl.medications.map((m) => (
@@ -167,7 +173,7 @@ function PatientDetailPage() {
                     {m.frequency && <> · {m.frequency}</>}
                   </div>
                 </div>
-                {!m.is_active && <span className="badge">已停</span>}
+                {!m.is_active && <span className="badge">已停 / discontinued</span>}
               </li>
             ))}
           </ul>
@@ -177,10 +183,10 @@ function PatientDetailPage() {
       <div className="heart-section">
         <h3>
           📊 基線 / Baselines
-          <span className="count">共 {hl.baselines.length} 條</span>
+          <span className="count">共 {hl.baselines.length} 條 / {hl.baselines.length} entries</span>
         </h3>
         {hl.baselines.length === 0 ? (
-          <div style={{ color: '#9ca3af', fontSize: 13 }}>(無基線紀錄)</div>
+          <div style={{ color: '#9ca3af', fontSize: 13 }}>(無基線紀錄 / no baselines)</div>
         ) : (
           <ul className="heart-list">
             {hl.baselines.map((b) => (
@@ -189,7 +195,7 @@ function PatientDetailPage() {
                   <span className="name-text">{b.value_text}</span>
                   <div className="sub">
                     {b.category}
-                    {b.measured_at && <> · 測 {b.measured_at}</>}
+                    {b.measured_at && <> · 測 / measured {b.measured_at}</>}
                   </div>
                 </div>
               </li>
@@ -200,9 +206,11 @@ function PatientDetailPage() {
 
       {/* 就診歷史 timeline */}
       <div className="timeline-section">
-        <h3>📅 就診歷史 (共 {detail.visits.length} 次)</h3>
+        <h3>
+          📅 就診歷史 / Visit Timeline (共 {detail.visits.length} 次 / {detail.visits.length} visits)
+        </h3>
         {detail.visits.length === 0 ? (
-          <div style={{ color: '#9ca3af', fontSize: 13 }}>(尚無就診紀錄)</div>
+          <div style={{ color: '#9ca3af', fontSize: 13 }}>(尚無就診紀錄 / no visits yet)</div>
         ) : (
           detail.visits.map((v) => {
             const vs = v.vital_signs;
@@ -213,16 +221,16 @@ function PatientDetailPage() {
                   📅 {v.visit_date?.split('T')[0] ?? v.visit_date} · [{v.status}]
                 </div>
                 {v.chief_complaint && (
-                  <div className="visit-cc"><strong>CC 主訴：</strong>{v.chief_complaint}</div>
+                  <div className="visit-cc"><strong>CC 主訴 / Chief complaint：</strong>{v.chief_complaint}</div>
                 )}
                 {v.hpi && (
-                  <div className="visit-hpi"><strong>HPI 現病史：</strong>{v.hpi}</div>
+                  <div className="visit-hpi"><strong>HPI 現病史 / History：</strong>{v.hpi}</div>
                 )}
                 {v.physical_exam && (
-                  <div className="visit-pe"><strong>PE 查體：</strong>{v.physical_exam}</div>
+                  <div className="visit-pe"><strong>PE 查體 / Physical exam：</strong>{v.physical_exam}</div>
                 )}
                 {v.diagnosis && (
-                  <div className="visit-dx"><strong>IMP 診斷：</strong>{v.diagnosis}</div>
+                  <div className="visit-dx"><strong>IMP 診斷 / Impression：</strong>{v.diagnosis}</div>
                 )}
 
                 {/* 生命徵象 */}
@@ -251,7 +259,7 @@ function PatientDetailPage() {
                 {/* 實驗室 */}
                 {labs.length > 0 && (
                   <div className="lab-list">
-                    <div className="lab-title">🧪 實驗室數據</div>
+                    <div className="lab-title">🧪 實驗室數據 / Lab Results</div>
                     {labs.map((lab, i) => (
                       <div key={i} className={`lab-row ${lab.is_abnormal ? 'abnormal' : ''}`}>
                         <span className="lab-name">{lab.name}</span>
@@ -259,7 +267,7 @@ function PatientDetailPage() {
                           {lab.value} {lab.unit}
                         </span>
                         {lab.reference_range && (
-                          <span className="lab-ref">(正常 {lab.reference_range})</span>
+                          <span className="lab-ref">(正常 / normal {lab.reference_range})</span>
                         )}
                         {lab.is_abnormal && <span className="lab-flag">↑↓</span>}
                       </div>
@@ -282,7 +290,7 @@ function PatientDetailPage() {
                 {/* Rx 處方 */}
                 {v.prescription_items && v.prescription_items.length > 0 && (
                   <div className="rx-list">
-                    <div className="rx-title">💊 Rx 處方</div>
+                    <div className="rx-title">💊 Rx 處方 / Prescriptions</div>
                     {v.prescription_items.map((rx, i) => (
                       <div key={i} className="rx-row">
                         <span className="rx-no">{i + 1}.</span>
@@ -303,8 +311,11 @@ function PatientDetailPage() {
                 {/* Phase 6: AI 回顧 (Track 1 MemoryAgent 主秀, 司機 6/28 簡化成單按鈕) */}
                 <div className="review-section">
                   <div className="review-header">
-                    🔁 <strong>AI 回顧此次就診</strong>
-                    <span className="review-hint">(模擬當時情境 + 注入歷次 visit, 找出當時就該想到的盲點)</span>
+                    🔁 <strong>AI 回顧此次就診 / AI Retrospective Review</strong>
+                    <span className="review-hint">
+                      (模擬當時情境 + 注入歷次 visit, 找出當時就該想到的盲點 ·
+                      reconstructs heart layer as-of this visit + injects prior visits, finds blind spots)
+                    </span>
                   </div>
                   <div className="review-buttons">
                     <button
@@ -312,13 +323,17 @@ function PatientDetailPage() {
                       onClick={() => handleReview(v.id, 'at_the_time')}
                       disabled={reviewMap[v.id]?.loading}
                     >
-                      🔁 跑 AI 回顧 (約 30-60 秒)
+                      <span className="bi-stack">
+                        <span>🔁 跑 AI 回顧 (約 30-60 秒)</span>
+                        <span className="bi-en">Run AI Retrospective Review (~30-60 s)</span>
+                      </span>
                     </button>
                   </div>
 
                   {reviewMap[v.id]?.loading && (
                     <div className="review-loading">
-                      ⏳ 跑 4 agent 並行中... (Qwen3.7-max, 約 5-45 秒)
+                      ⏳ 跑 4 agent 並行中... (Qwen3.7-max, 約 5-45 秒) /
+                      Running 4 agents in parallel... (Qwen3.7-max, ~5-45 s)
                     </div>
                   )}
                   {reviewMap[v.id]?.error && (
@@ -332,7 +347,9 @@ function PatientDetailPage() {
                 {/* Phase 4.2d: 當時 AI 建議 (折疊) */}
                 {v.ai_drafts && v.ai_drafts.length > 0 && (
                   <details className="ai-drafts-record">
-                    <summary>📋 當時 AI 建議 ({v.ai_drafts.length} 條 / {v.ai_drafts[0].status})</summary>
+                    <summary>
+                      📋 當時 AI 建議 / Past AI Drafts ({v.ai_drafts.length} 條 / {v.ai_drafts[0].status})
+                    </summary>
                     {v.ai_drafts.map((d) => {
                       const p = d.payload || {};
                       return (
@@ -375,7 +392,7 @@ function PatientDetailPage() {
                                 </ul>
                               )}
                               {(!p.contextual_risks || p.contextual_risks.length === 0) && (
-                                <div className="ai-draft-text">(無風險)</div>
+                                <div className="ai-draft-text">(無風險 / no risk)</div>
                               )}
                             </div>
                           )}
@@ -396,13 +413,6 @@ function PatientDetailPage() {
   );
 }
 
-/**
- * Phase 6: Mode A/B 回顧結果 panel.
- *
- * 上半: mode header + heart_layer_source + summary
- * 中段: 4 agent panel (intake/triage/audit/education, 可能 null)
- * 下緣: mode_disclaimer (Mode B 提醒不究責)
- */
 function ReviewResultPanel({ result }: { result: ReviewResponse }) {
   const mode = result.mode;
   const modeColor = '#1d4ed8';
@@ -410,7 +420,6 @@ function ReviewResultPanel({ result }: { result: ReviewResponse }) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveBusy, setSaveBusy] = useState(false);
 
-  // 從 audit findings 萃取 watchlist pattern + lesson
   function extractLesson(): { pattern: string; lesson: string } | null {
     const audit: any = result.audit;
     if (!audit) return null;
@@ -424,12 +433,12 @@ function ReviewResultPanel({ result }: { result: ReviewResponse }) {
     } else if (cr?.triggered_by) {
       pattern = cr.triggered_by;
     } else {
-      pattern = audit.closing_note?.slice(0, 60) || 'AI 教育要點';
+      pattern = audit.closing_note?.slice(0, 60) || 'AI 教育要點 / AI lesson';
     }
     const lessonParts: string[] = [];
     if (rf?.description) lessonParts.push(rf.description);
-    if (cr?.risk) lessonParts.push(`情境風險: ${cr.risk}`);
-    if (audit.closing_note) lessonParts.push(`建議: ${audit.closing_note}`);
+    if (cr?.risk) lessonParts.push(`情境風險 / contextual risk: ${cr.risk}`);
+    if (audit.closing_note) lessonParts.push(`建議 / recommendation: ${audit.closing_note}`);
     const lesson = lessonParts.join('\n').slice(0, 1000);
 
     return pattern && lesson ? { pattern, lesson } : null;
@@ -449,7 +458,7 @@ function ReviewResultPanel({ result }: { result: ReviewResponse }) {
       });
       setSavedLessonId(item.id);
     } catch (e: any) {
-      setSaveError(e?.message ?? '加入失敗');
+      setSaveError(e?.message ?? '加入失敗 / Save failed');
     } finally {
       setSaveBusy(false);
     }
@@ -461,13 +470,15 @@ function ReviewResultPanel({ result }: { result: ReviewResponse }) {
       <div className="review-mode-header" style={{ borderLeftColor: modeColor }}>
         <div>
           <span className="review-mode-badge" style={{ background: modeColor }}>
-            AI 回顧
+            AI 回顧 / AI Review
           </span>
-          <span className="review-source">當時心臟層來源: {mode.heart_layer_source}</span>
+          <span className="review-source">
+            當時心臟層來源 / Heart-layer source: {mode.heart_layer_source}
+          </span>
         </div>
         {mode.summary_text && (
           <div className="review-summary">
-            <strong>AI 看到的當時心臟層 + 歷次 visit:</strong>
+            <strong>AI 看到的當時心臟層 + 歷次 visit / What the AI saw (heart layer + prior visits):</strong>
             <pre>{mode.summary_text}</pre>
           </div>
         )}
@@ -475,7 +486,7 @@ function ReviewResultPanel({ result }: { result: ReviewResponse }) {
 
       {result.intake && (
         <div className="review-agent intake">
-          <div className="review-agent-title">🔍 入口偵查官 (intake)</div>
+          <div className="review-agent-title">🔍 入口偵查官 / Intake agent</div>
           {result.intake.summary && <div>{result.intake.summary}</div>}
           {result.intake.findings && result.intake.findings.length > 0 && (
             <ul>
@@ -491,7 +502,7 @@ function ReviewResultPanel({ result }: { result: ReviewResponse }) {
 
       {result.triage && (
         <div className="review-agent triage">
-          <div className="review-agent-title">⚖️ 前閘門 (triage)</div>
+          <div className="review-agent-title">⚖️ 前閘門 / Triage agent</div>
           {result.triage.has_conflict && (
             <div className="ai-conflict">⚠ {result.triage.conflict_summary}</div>
           )}
@@ -501,7 +512,7 @@ function ReviewResultPanel({ result }: { result: ReviewResponse }) {
                 <li key={i}>
                   <strong>{d.diagnosis || d.name}</strong>: {d.reasoning || d.reason}
                   {d.source_url && (
-                    <> · <a href={d.source_url} target="_blank" rel="noreferrer">來源</a></>
+                    <> · <a href={d.source_url} target="_blank" rel="noreferrer">來源 / source</a></>
                   )}
                 </li>
               ))}
@@ -512,10 +523,10 @@ function ReviewResultPanel({ result }: { result: ReviewResponse }) {
 
       {result.audit && (
         <div className="review-agent audit">
-          <div className="review-agent-title">🛡️ 後閘門 (audit)</div>
+          <div className="review-agent-title">🛡️ 後閘門 / Audit agent</div>
           {result.audit.rule_engine_findings && result.audit.rule_engine_findings.length > 0 && (
             <>
-              <div className="review-agent-subtitle">規則引擎:</div>
+              <div className="review-agent-subtitle">規則引擎 / Rule engine:</div>
               <ul>
                 {result.audit.rule_engine_findings.map((r: any, i: number) => (
                   <li key={i}>
@@ -527,7 +538,7 @@ function ReviewResultPanel({ result }: { result: ReviewResponse }) {
           )}
           {result.audit.contextual_risks && result.audit.contextual_risks.length > 0 && (
             <>
-              <div className="review-agent-subtitle">情境風險:</div>
+              <div className="review-agent-subtitle">情境風險 / Contextual risks:</div>
               <ul>
                 {result.audit.contextual_risks.map((r: any, i: number) => (
                   <li key={i}>
@@ -535,28 +546,28 @@ function ReviewResultPanel({ result }: { result: ReviewResponse }) {
                       <span className="ai-section-tag" style={{ background: '#fee2e2', color: '#991b1b' }}>⚠</span>
                     )}
                     <strong>{r.drug}</strong>: {r.risk}
-                    {r.triggered_by && <> (觸發: {r.triggered_by})</>}
+                    {r.triggered_by && <> (觸發 / triggered by: {r.triggered_by})</>}
                   </li>
                 ))}
               </ul>
             </>
           )}
           {result.audit.unknowns && result.audit.unknowns.length > 0 && (
-            <div>成分不明: {result.audit.unknowns.join(', ')}</div>
+            <div>成分不明 / Unknown ingredients: {result.audit.unknowns.join(', ')}</div>
           )}
         </div>
       )}
 
       {result.education && (
         <div className="review-agent education">
-          <div className="review-agent-title">📚 衛教 (education)</div>
+          <div className="review-agent-title">📚 衛教 / Education agent</div>
           <div style={{ whiteSpace: 'pre-wrap' }}>{result.education.advice}</div>
         </div>
       )}
 
       {result.skipped && result.skipped.length > 0 && (
         <div className="review-skipped">
-          ⓘ 略過: {result.skipped.join(' / ')}
+          ⓘ 略過 / Skipped: {result.skipped.join(' / ')}
         </div>
       )}
 
@@ -570,6 +581,9 @@ function ReviewResultPanel({ result }: { result: ReviewResponse }) {
           {savedLessonId ? (
             <div className="watchlist-saved">
               ✅ 已加進你的 watchlist。下次新就診頁頂部會 banner 提醒。
+              <div className="bi-en" style={{ opacity: 0.75, marginTop: 4 }}>
+                Saved to your watchlist. A banner will appear at the top of the next new-visit page.
+              </div>
             </div>
           ) : (
             <button
@@ -577,7 +591,10 @@ function ReviewResultPanel({ result }: { result: ReviewResponse }) {
               disabled={saveBusy || !canSave}
               onClick={handleAddWatchlist}
             >
-              📌 把這個教訓加進我的 watchlist
+              <span className="bi-stack">
+                <span>📌 把這個教訓加進我的 watchlist</span>
+                <span className="bi-en">Save this lesson to my watchlist</span>
+              </span>
             </button>
           )}
           {saveError && <div className="watchlist-error">⚠️ {saveError}</div>}
