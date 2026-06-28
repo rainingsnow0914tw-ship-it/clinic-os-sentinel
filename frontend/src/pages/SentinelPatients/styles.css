@@ -1,5 +1,56 @@
 /* Sentinel patient search + detail page styles */
 
+/* === Track 1 demo highlight banner (搜尋頁置頂, 評審一眼看到主秀病人) === */
+.demo-highlight-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 2px solid #f59e0b;
+  border-radius: 12px;
+  text-decoration: none;
+  color: #78350f;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.18);
+}
+.demo-highlight-banner:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(245, 158, 11, 0.32);
+  text-decoration: none;
+}
+.demo-highlight-star {
+  font-size: 32px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.demo-highlight-text { flex: 1; }
+.demo-highlight-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #78350f;
+  margin-bottom: 4px;
+}
+.demo-highlight-title .demo-highlight-zh {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.8;
+  margin-top: 2px;
+}
+.demo-highlight-sub {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #92400e;
+}
+.demo-highlight-arrow {
+  font-size: 24px;
+  font-weight: 700;
+  color: #d97706;
+  flex-shrink: 0;
+}
+
 /* === visit row badges (Phase 8 fairness: clarify past vs latest) === */
 .visit-relative {
   color: #6b7280;

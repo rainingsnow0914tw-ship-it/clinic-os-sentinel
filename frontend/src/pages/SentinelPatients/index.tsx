@@ -45,6 +45,27 @@ function SentinelPatientsPage() {
         <span className="bi-en">The Sentinel · Patient Search</span>
       </h2>
 
+      {/* Phase 8 fairness: Track 1 demo patient highlight, 評審不用瞎找 */}
+      <Link
+        to="/sentinel/patients/1b155999-8d9a-4862-b11c-3cad18dc70cc"
+        className="demo-highlight-banner"
+      >
+        <div className="demo-highlight-star">⭐</div>
+        <div className="demo-highlight-text">
+          <div className="demo-highlight-title">
+            Track 1 demo patient · Auntie Wang quartet
+            <span className="demo-highlight-zh">Track 1 主秀病人 · 王阿姨四幕劇</span>
+          </div>
+          <div className="demo-highlight-sub">
+            王慧明（王阿姨）· TEST-W007 · F 68y · 4 visits over 9 months
+            <br />
+            Hypertension → forgetfulness → ibuprofen × amlodipine antagonism → fall.
+            Click to open her chart and try the AI Retrospective Review.
+          </div>
+        </div>
+        <div className="demo-highlight-arrow">→</div>
+      </Link>
+
       <form onSubmit={onSubmit} className="sentinel-search-row">
         <input
           type="text"
