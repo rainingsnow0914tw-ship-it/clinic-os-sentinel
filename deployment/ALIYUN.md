@@ -3,6 +3,15 @@
 > Qwen Cloud Hackathon 2026 投稿用「Proof of Alibaba Cloud Deployment」入口文件。
 > Submission deadline: **2026-07-09 14:00 PT**
 
+## 🟢 Live deployment
+
+- **Frontend (OSS)**: https://sentinel-demo-2026.oss-ap-southeast-1.aliyuncs.com/
+- **Backend API base**: https://47.84.230.19.nip.io/api/
+- **Health check**: https://47.84.230.19.nip.io/v1/sentinel/health
+- **Region**: Singapore (ap-southeast-1)
+- **Stack**: ECS (Ubuntu 22.04, ecs.e-c1m2.large) + OSS Standard + Caddy 2 + Let's Encrypt
+- **Deployment proof commit**: see git log for `feat(phase8): 阿里雲 ECS+OSS 部署起手`
+
 ---
 
 ## Alibaba Cloud services used
