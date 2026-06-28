@@ -5,12 +5,12 @@
 
 ## 🟢 Live deployment
 
-- **Frontend (OSS)**: https://sentinel-demo-2026.oss-ap-southeast-1.aliyuncs.com/
-- **Backend API base**: https://47.84.230.19.nip.io/api/
+- **Single URL (frontend + API)**: https://47.84.230.19.nip.io/
 - **Health check**: https://47.84.230.19.nip.io/v1/sentinel/health
 - **Region**: Singapore (ap-southeast-1)
-- **Stack**: ECS (Ubuntu 22.04, ecs.e-c1m2.large) + OSS Standard + Caddy 2 + Let's Encrypt
-- **Deployment proof commit**: see git log for `feat(phase8): 阿里雲 ECS+OSS 部署起手`
+- **Stack**: ECS (Ubuntu 22.04, ecs.e-c1m2.large) + OSS Standard (frontend backup) + Caddy 2 (SPA serve + reverse proxy + Let's Encrypt SSL)
+- **OSS bucket** (frontend assets backup, proves OSS usage): `sentinel-demo-2026` in ap-southeast-1
+- **Note**: OSS bucket-domain forces `Content-Disposition: attachment` on HTML for anti-phishing — so the live demo URL serves the SPA from Caddy on ECS instead. OSS still holds the same `dist/` files as `proof of OSS usage`.
 
 ---
 

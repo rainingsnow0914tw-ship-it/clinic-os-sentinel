@@ -4,7 +4,7 @@
 
 ## Try it
 
-**👉 https://sentinel-demo-2026.oss-ap-southeast-1.aliyuncs.com/**
+**👉 https://47.84.230.19.nip.io/**
 
 Should auto-redirect to `/sentinel/patients` (patient search page).
 

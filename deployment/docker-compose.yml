@@ -50,6 +50,7 @@ services:
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - /srv/sentinel-frontend:/srv/frontend:ro
       - caddy_data:/data
       - caddy_config:/config
     environment:

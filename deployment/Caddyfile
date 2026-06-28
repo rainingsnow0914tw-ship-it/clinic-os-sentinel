@@ -1,5 +1,5 @@
 # ============================================================
-# Sentinel Caddy reverse proxy
+# Sentinel Caddy reverse proxy + frontend static serve
 # 自動 Let's Encrypt SSL (要 domain 對 ECS 公網 IP 解析)
 # ============================================================
 
@@ -10,23 +10,21 @@
 {$DOMAIN} {
     encode gzip zstd
 
-    # /v1/* 跟 /api/* 都導 backend (frontend 用哪個都行)
+    # API: axios baseURL = /api → strip 後 backend 收 /v1/...
     handle_path /api/* {
         reverse_proxy backend:8080
     }
+
+    # 直接打的 backend 路徑 (curl/judge debug)
     handle /v1/* {
         reverse_proxy backend:8080
     }
-    handle /sentinel/* {
-        reverse_proxy backend:8080
-    }
 
-    handle / {
-        respond "Sentinel backend OK. Frontend on OSS." 200
-    }
-
+    # frontend SPA: serve dist + try_files fallback 給 React Router
     handle {
-        respond "Not found" 404
+        root * /srv/frontend
+        try_files {path} /index.html
+        file_server
     }
 
     log {
