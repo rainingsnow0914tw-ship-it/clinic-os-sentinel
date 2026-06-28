@@ -1,0 +1,64 @@
+# ============================================================
+# Sentinel — 阿里雲 ECS 部署 compose
+# ============================================================
+# 啟動: docker compose --env-file .env up -d --build
+# 看 log:  docker compose logs -f backend
+# 停止: docker compose down (data volume 保留)
+# 完全清: docker compose down -v (連 DB data 都砍)
+# ============================================================
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: sentinel-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${PG_DB:-clinic_os}
+      POSTGRES_USER: ${PG_USER:-clinic}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:?PG_PASSWORD 必填}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-clinic} -d ${PG_DB:-clinic_os}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    # 不對外暴露 5432，內網 service name=db 就好
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: sentinel-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: ./backend.env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${PG_USER:-clinic}:${PG_PASSWORD}@db:5432/${PG_DB:-clinic_os}
+    expose:
+      - "8080"
+    # 不對外暴露，走 caddy 反代
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: sentinel-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN 必填，例 sentinel.fayumacau.com}
+      CADDY_EMAIL: ${CADDY_EMAIL:?CADDY_EMAIL 必填，Let's Encrypt 通知用}
+    depends_on:
+      - backend
+
+volumes:
+  pg_data:
+  caddy_data:
+  caddy_config:

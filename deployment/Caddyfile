@@ -1,0 +1,36 @@
+# ============================================================
+# Sentinel Caddy reverse proxy
+# 自動 Let's Encrypt SSL (要 domain 對 ECS 公網 IP 解析)
+# ============================================================
+
+{
+    email {$CADDY_EMAIL}
+}
+
+{$DOMAIN} {
+    encode gzip zstd
+
+    # /v1/* 跟 /api/* 都導 backend (frontend 用哪個都行)
+    handle_path /api/* {
+        reverse_proxy backend:8080
+    }
+    handle /v1/* {
+        reverse_proxy backend:8080
+    }
+    handle /sentinel/* {
+        reverse_proxy backend:8080
+    }
+
+    handle / {
+        respond "Sentinel backend OK. Frontend on OSS." 200
+    }
+
+    handle {
+        respond "Not found" 404
+    }
+
+    log {
+        output stdout
+        format console
+    }
+}

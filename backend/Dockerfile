@@ -1,11 +1,11 @@
 # ============================================================
-# Clinic OS Backend Dockerfile
-# 部署到 Google Cloud Run 用
+# Clinic OS Sentinel Backend — Dockerfile
+# 阿里雲 ECS docker-compose 部署用
 # ============================================================
 
 FROM python:3.11-slim
 
-# 系統相依（WeasyPrint 需要 Pango / Cairo）
+# 系統相依（WeasyPrint 要 Pango/Cairo、CJK 字型給 PDF）
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpango-1.0-0 \
@@ -14,22 +14,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgdk-pixbuf-2.0-0 \
     shared-mime-info \
     fonts-noto-cjk \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# 先裝相依（讓 docker layer cache 生效）
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 再 copy 程式碼
 COPY ./app ./app
 COPY ./alembic ./alembic
 COPY ./alembic.ini ./
+COPY ./scripts ./scripts
+COPY ./seed_data ./seed_data
+COPY ./docker-entrypoint.sh ./
+RUN chmod +x docker-entrypoint.sh
 
-# Cloud Run 會用 PORT 環境變數
 ENV PORT=8080
 EXPOSE 8080
 
-# Cloud Run 建議 1 worker per instance（autoscale 由 Cloud Run 處理）
-CMD exec uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD curl -fsS http://localhost:${PORT}/v1/sentinel/health || exit 1
+
+ENTRYPOINT ["./docker-entrypoint.sh"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "2"]
