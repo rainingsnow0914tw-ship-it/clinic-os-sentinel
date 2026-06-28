@@ -654,12 +654,24 @@ def load_heart_layer_at_visit(
             )
         ).first()
     if snap:
+        # Phase 8 fairness: 即使吃 snapshot, 也算 excluded 證據鏈, 讓 UI 看得到先知去除
+        excluded = compute_excluded_at(db, visit.patient_id, visit.visit_date)
+        original_summary = snap.summary_text or ""
+        if excluded:
+            excl_text = (
+                "\n\n⊘ Excluded by reconstruction "
+                f"(appeared only after {visit.visit_date.date() if hasattr(visit.visit_date, 'date') else visit.visit_date}, AI cannot see):\n"
+                + "\n".join(f"  · {line}" for line in excluded[:10])
+            )
+        else:
+            excl_text = "\n\n⊘ Nothing excluded — this is the earliest evidence window."
         return {
             "flags_json": snap.flags_json,
             "problems_json": snap.problems_json,
             "medications_json": snap.medications_json,
             "baselines_json": snap.baselines_json,
-            "summary_text": snap.summary_text or "",
+            "summary_text": original_summary + excl_text,
+            "excluded_summary": excluded,
             "source": f"snapshot:{snap.snapshot_type}",
         }
     # fallback: reconstruct (按 target visit_date 過濾, 不含後續演進)
@@ -669,6 +681,68 @@ def load_heart_layer_at_visit(
     payload = _serialize_heart_layer(db, visit.patient_id)
     payload["source"] = "fallback:current (Mode B)"
     return payload
+
+
+def compute_excluded_at(
+    db: Session, patient_id: uuid.UUID, target_visit_date
+) -> list[str]:
+    """列出 heart layer 各 row 中, 「在 target_visit_date 之後才出現」的 items.
+
+    給 Mode A 證據鏈用: 即使吃 snapshot, 也能告訴 UI「reconstruction
+    過濾掉了哪些先知資訊」, 讓評審看得到「AI 真的看不見未來」.
+    """
+    target_date = target_visit_date.date() if hasattr(target_visit_date, "date") else target_visit_date
+    excluded: list[str] = []
+
+    visits = db.scalars(
+        select(Visit).where(Visit.patient_id == patient_id)
+    ).all()
+    visit_date_by_id = {v.id: v.visit_date for v in visits}
+
+    flags = db.scalars(
+        select(PatientFlag).where(PatientFlag.patient_id == patient_id)
+    ).all()
+    for f in flags:
+        if f.first_observed_at_visit:
+            fov_date = visit_date_by_id.get(f.first_observed_at_visit)
+            if fov_date and fov_date > target_visit_date:
+                excluded.append(
+                    f"flag: {f.content[:40]} (first observed {fov_date.date()}, after this visit)"
+                )
+                continue
+        if f.confidence_status == "confirmed" and f.confirmed_at_visit:
+            cov_date = visit_date_by_id.get(f.confirmed_at_visit)
+            if cov_date and cov_date > target_visit_date:
+                excluded.append(
+                    f"flag-confidence: {f.content[:40]} would be 'to_observe' at this point "
+                    f"(only confirmed later at {cov_date.date()})"
+                )
+
+    problems = db.scalars(
+        select(PatientProblem).where(PatientProblem.patient_id == patient_id)
+    ).all()
+    for p in problems:
+        if p.diagnosed_at and p.diagnosed_at > target_date:
+            excluded.append(
+                f"problem: {p.problem_name} (diagnosed {p.diagnosed_at}, after this visit)"
+            )
+
+    # NOTE: medication exclusion 不算 — patient_medication 沒有 first_prescribed_at_visit
+    # 欄位, created_at 是 seed/evolve 跑的時間而非真實開藥時間, 列出來會誤導.
+    # 真實 long-term med 起始時間在 prescription_items 表 (per visit), 不在 medication.
+
+    baselines = db.scalars(
+        select(PatientBaseline).where(PatientBaseline.patient_id == patient_id)
+    ).all()
+    later_baseline_count = sum(
+        1 for b in baselines if b.measured_at and b.measured_at > target_visit_date
+    )
+    if later_baseline_count:
+        excluded.append(
+            f"baselines: {later_baseline_count} measurement(s) recorded after this visit"
+        )
+
+    return excluded
 
 
 def reconstruct_heart_at(
@@ -692,6 +766,8 @@ def reconstruct_heart_at(
     ).all()
     visit_date_by_id = {v.id: v.visit_date for v in visits}
 
+    excluded_lines: list[str] = []  # Phase 8 fairness: 列「先知去除」證據
+
     # 1. flags
     flags_raw = db.scalars(
         select(PatientFlag).where(PatientFlag.patient_id == patient_id)
@@ -701,12 +777,18 @@ def reconstruct_heart_at(
         if f.first_observed_at_visit:
             fov_date = visit_date_by_id.get(f.first_observed_at_visit)
             if fov_date and fov_date > target_visit_date:
-                continue  # 這 flag 是 target 之後才出現的
+                excluded_lines.append(
+                    f"flag: {f.content[:40]} (first observed at {fov_date.date()}, after this visit)"
+                )
+                continue
         confidence = f.confidence_status
         if confidence == "confirmed" and f.confirmed_at_visit:
             cov_date = visit_date_by_id.get(f.confirmed_at_visit)
             if cov_date and cov_date > target_visit_date:
-                confidence = "to_observe"  # 還沒升 confirmed
+                confidence = "to_observe"
+                excluded_lines.append(
+                    f"flag-confidence: {f.content[:40]} kept as to_observe (confirmed only later at {cov_date.date()})"
+                )
         flags_json.append({
             "id": str(f.id),
             "flag_type": f.flag_type,
@@ -724,6 +806,9 @@ def reconstruct_heart_at(
     problems_json = []
     for p in problems_raw:
         if p.diagnosed_at and p.diagnosed_at > target_date:
+            excluded_lines.append(
+                f"problem: {p.problem_name} (diagnosed {p.diagnosed_at}, after this visit)"
+            )
             continue
         problems_json.append({
             "id": str(p.id),
@@ -735,6 +820,7 @@ def reconstruct_heart_at(
         })
 
     # 3. medications: evolve 加的按 created_at, seed 既存保留
+    # NOTE: medication 沒列 excluded — created_at 是 seed 跑的時間, 不是真實處方時間.
     medications_raw = db.scalars(
         select(PatientMedication).where(PatientMedication.patient_id == patient_id)
     ).all()
@@ -758,8 +844,10 @@ def reconstruct_heart_at(
         select(PatientBaseline).where(PatientBaseline.patient_id == patient_id)
     ).all()
     baselines_json = []
+    baselines_excluded_count = 0
     for b in baselines_raw:
         if b.measured_at and b.measured_at > target_visit_date:
+            baselines_excluded_count += 1
             continue
         baselines_json.append({
             "id": str(b.id),
@@ -767,23 +855,42 @@ def reconstruct_heart_at(
             "value_text": b.value_text,
             "measured_at": b.measured_at.isoformat() if b.measured_at else None,
         })
+    if baselines_excluded_count:
+        excluded_lines.append(
+            f"baselines: {baselines_excluded_count} measurement(s) recorded after this visit"
+        )
 
     confirmed_flags = [f for f in flags_json if f["confidence_status"] == "confirmed"]
     to_observe_flags = [f for f in flags_json if f["confidence_status"] == "to_observe"]
     summary_lines = [
-        f"心臟層摘要 (重建 {target_date}): {len(confirmed_flags)} 紅旗確認 / {len(to_observe_flags)} 待觀察 / {len(problems_json)} 慢性病 / {len(medications_json)} 長期用藥 / {len(baselines_json)} baseline",
+        f"心臟層摘要 / Heart layer reconstructed as of {target_date}: "
+        f"{len(confirmed_flags)} confirmed red flag / {len(to_observe_flags)} to_observe / "
+        f"{len(problems_json)} chronic / {len(medications_json)} long-term med / "
+        f"{len(baselines_json)} baseline",
     ]
     if confirmed_flags:
         summary_lines.append(
-            "確認紅旗: " + "; ".join(f["content"][:40] for f in confirmed_flags[:5])
+            "Confirmed flags: " + "; ".join(f["content"][:40] for f in confirmed_flags[:5])
         )
     if problems_json:
         summary_lines.append(
-            "慢性病: " + ", ".join(p["problem_name"] for p in problems_json[:8])
+            "Chronic problems: " + ", ".join(p["problem_name"] for p in problems_json[:8])
         )
     if medications_json:
         summary_lines.append(
-            "長期用藥: " + ", ".join(m["medication_name"] for m in medications_json[:8])
+            "Long-term meds: " + ", ".join(m["medication_name"] for m in medications_json[:8])
+        )
+    if excluded_lines:
+        summary_lines.append("")
+        summary_lines.append(
+            f"⊘ Excluded by reconstruction (appeared only after {target_date}, AI cannot see):"
+        )
+        for line in excluded_lines[:10]:
+            summary_lines.append(f"  · {line}")
+    else:
+        summary_lines.append("")
+        summary_lines.append(
+            "⊘ Nothing excluded — this is the earliest evidence window."
         )
 
     return {
@@ -792,5 +899,6 @@ def reconstruct_heart_at(
         "medications_json": medications_json,
         "baselines_json": baselines_json,
         "summary_text": "\n".join(summary_lines),
+        "excluded_summary": excluded_lines,
         "source": f"reconstruct:{target_date}",
     }

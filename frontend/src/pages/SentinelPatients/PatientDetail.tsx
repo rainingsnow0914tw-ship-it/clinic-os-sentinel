@@ -31,6 +31,25 @@ interface ReviewState {
   error?: string;
 }
 
+// Phase 8 fairness: relative time helpers for visit row badges
+function daysBetween(dateStr: string): number {
+  const past = new Date(dateStr).getTime();
+  return Math.round((Date.now() - past) / (1000 * 60 * 60 * 24));
+}
+function relativeLabel(dateStr: string): string {
+  const d = daysBetween(dateStr);
+  if (d < 0) return `in ${-d}d`;
+  if (d === 0) return '今天 / today';
+  if (d === 1) return '昨天 / yesterday';
+  if (d < 30) return `${d} 天前 / ${d} days ago`;
+  if (d < 365) {
+    const m = Math.round(d / 30);
+    return `${m} 個月前 / ${m} month${m > 1 ? 's' : ''} ago`;
+  }
+  const y = Math.round(d / 365);
+  return `${y} 年前 / ${y} year${y > 1 ? 's' : ''} ago`;
+}
+
 function PatientDetailPage() {
   const { patientId } = useParams<{ patientId: string }>();
   const [detail, setDetail] = useState<PatientDetail | null>(null);
@@ -65,6 +84,15 @@ function PatientDetailPage() {
   if (!detail) return null;
 
   const hl = detail.heart_layer;
+  // Phase 8 fairness: visit_id → visit_date map, 給 heart layer row 顯示「自 visit X 起」
+  const visitDateById: Record<string, string> = {};
+  detail.visits.forEach((v) => {
+    if (v.id && v.visit_date) {
+      visitDateById[v.id] = v.visit_date.split('T')[0];
+    }
+  });
+  // 找最新 visit, 用來標 Latest badge
+  const latestVisitId = detail.visits.length > 0 ? detail.visits[0].id : null;
 
   return (
     <div className="sentinel-page">
@@ -108,6 +136,22 @@ function PatientDetailPage() {
                   <span className="name-text">{f.content}</span>
                   <div className="sub">
                     {f.flag_type} · 來源 / source {f.flag_source}
+                    {(f as any).first_observed_at_visit &&
+                      visitDateById[(f as any).first_observed_at_visit] && (
+                        <>
+                          {' '}
+                          · 首次觀察 / first observed at visit{' '}
+                          <strong>{visitDateById[(f as any).first_observed_at_visit]}</strong>
+                        </>
+                      )}
+                    {(f as any).confirmed_at_visit &&
+                      visitDateById[(f as any).confirmed_at_visit] && (
+                        <>
+                          {' '}
+                          · 確認 / confirmed at visit{' '}
+                          <strong>{visitDateById[(f as any).confirmed_at_visit]}</strong>
+                        </>
+                      )}
                   </div>
                 </div>
                 <div className="badges">
@@ -218,7 +262,14 @@ function PatientDetailPage() {
             return (
               <div className="visit-row" key={v.id}>
                 <div className="visit-date">
-                  📅 {v.visit_date?.split('T')[0] ?? v.visit_date} · [{v.status}]
+                  📅 {v.visit_date?.split('T')[0] ?? v.visit_date}
+                  {v.visit_date && (
+                    <span className="visit-relative"> · {relativeLabel(v.visit_date)}</span>
+                  )}
+                  {v.id === latestVisitId && (
+                    <span className="visit-latest-badge">🟢 Latest visit / 最近一次</span>
+                  )}
+                  <span className="visit-status-badge">✓ {v.status}</span>
                 </div>
                 {v.chief_complaint && (
                   <div className="visit-cc"><strong>CC 主訴 / Chief complaint：</strong>{v.chief_complaint}</div>

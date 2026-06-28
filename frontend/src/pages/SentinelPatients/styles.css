@@ -1,5 +1,33 @@
 /* Sentinel patient search + detail page styles */
 
+/* === visit row badges (Phase 8 fairness: clarify past vs latest) === */
+.visit-relative {
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 400;
+  margin-left: 4px;
+}
+.visit-latest-badge {
+  display: inline-block;
+  background: #d1fae5;
+  color: #065f46;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-left: 8px;
+}
+.visit-status-badge {
+  display: inline-block;
+  background: #e5e7eb;
+  color: #374151;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-left: 6px;
+  font-style: italic;
+}
+
 /* === bilingual English overlay (Qwen Cloud Hackathon 2026, judge accessibility) === */
 .bi-en {
   display: block;

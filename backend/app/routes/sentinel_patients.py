@@ -181,6 +181,9 @@ class HeartFlagSummary(BaseModel):
     content: str
     confidence_status: str
     flag_source: str
+    # Phase 8 fairness: 評審看 reconstruct 是否有先知能力的證據鏈
+    first_observed_at_visit: UUID | None = None
+    confirmed_at_visit: UUID | None = None
 
 
 class HeartProblemSummary(BaseModel):
@@ -354,6 +357,8 @@ def _load_heart_layer(db: Session, patient_id: UUID) -> HeartLayerSummary:
                 content=f.content,
                 confidence_status=f.confidence_status,
                 flag_source=f.flag_source,
+                first_observed_at_visit=f.first_observed_at_visit,
+                confirmed_at_visit=f.confirmed_at_visit,
             )
             for f in flags
         ],
