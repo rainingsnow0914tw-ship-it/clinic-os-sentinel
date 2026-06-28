@@ -129,7 +129,7 @@ Overlay callout on the banner: "📌 You learned 1 lesson: ibuprofen + amlodipin
 **End card** (last 2 s):
 ```
 The Sentinel
-github.com/<your-handle>/clinic-os-sentinel-v3
+github.com/rainingsnow0914tw-ship-it/clinic-os-sentinel
 Qwen Cloud Hackathon 2026
 ```
 

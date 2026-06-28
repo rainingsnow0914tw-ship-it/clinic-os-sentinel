@@ -5,11 +5,11 @@
 
 ---
 
-## Project name
-The Sentinel — Longitudinal Memory & Retrospective Coach for Clinical Practice
+## Project name (50 / 60 chars — submitted 2026-06-29)
+The Sentinel — A MemoryAgent for Clinical Practice
 
-## Tagline (≤ 200 chars)
-From single-visit AI to memory that grows both ways — a Qwen3.7-max sentinel that learns the patient AND coaches the doctor backward through time.
+## Elevator pitch / Tagline (155 / 200 chars — submitted 2026-06-29)
+A Qwen3.7-max diagnostic sentinel — memory accumulates across patient visits, AND retrospectively trains the doctor on what they missed. No hindsight bias.
 
 ## Tracks
 - **Primary**: Track 1 — MemoryAgent
@@ -122,20 +122,45 @@ One symptom is never a diagnosis. *The same holds for one visit.* 🩺
 
 ---
 
-## Built with
+## Built with (Devpost tag input — 一個一個輸入按 Enter，不要包反引號、不要用 · 分隔)
 
-`alibaba-cloud-ecs` · `alibaba-cloud-oss` · `dashscope-international` · `qwen3.7-max` · `qwen3.7-plus` · `paraformer-v2` · `fastapi` · `sqlalchemy` · `alembic` · `pydantic` · `postgresql` · `react` · `typescript` · `vite` · `axios` · `zustand` · `docker` · `docker-compose` · `caddy` · `lets-encrypt` · `rxnorm` · `openfda` · `pubmed`
+```
+alibaba-cloud-ecs
+alibaba-cloud-oss
+dashscope-international
+qwen3.7-max
+qwen3.7-plus
+paraformer-v2
+fastapi
+sqlalchemy
+alembic
+pydantic
+postgresql
+react
+typescript
+vite
+axios
+zustand
+docker
+docker-compose
+caddy
+lets-encrypt
+rxnorm
+openfda
+```
+
+(22 tags. `pubmed` 拿掉了——audit agent 規劃連 PubMed 但 hackathon 階段沒實接，誠實一點。)
 
 ---
 
 ## Try it out (Devpost "Try it" link section)
 
 - 🟢 **Live demo (no login)**: https://47.84.230.19.nip.io/
-- 📦 **Source repo (MIT)**: <GitHub URL — driver to fill once repo is public>
+- 📦 **Source repo (MIT)**: https://github.com/rainingsnow0914tw-ship-it/clinic-os-sentinel
 - 🎬 **Demo video (≤3 min)**: <YouTube URL — driver to fill after upload>
-- ☁️ **Proof of Alibaba Cloud deployment**: <repo URL>/blob/master/deployment/ALIYUN.md
-- 🩺 **90-second judge walkthrough**: <repo URL>/blob/master/deployment/LIVE_DEMO.md
-- 🏗️ **Architecture diagrams (Mermaid)**: <repo URL>/blob/master/deployment/architecture.md
+- ☁️ **Proof of Alibaba Cloud deployment**: https://github.com/rainingsnow0914tw-ship-it/clinic-os-sentinel/blob/master/deployment/ALIYUN.md
+- 🩺 **90-second judge walkthrough**: https://github.com/rainingsnow0914tw-ship-it/clinic-os-sentinel/blob/master/deployment/LIVE_DEMO.md
+- 🏗️ **Architecture diagrams (Mermaid)**: https://github.com/rainingsnow0914tw-ship-it/clinic-os-sentinel/blob/master/deployment/architecture.md
 
 ---
 

@@ -75,7 +75,7 @@ sudo usermod -aG docker $USER  # log out & back in
 
 ### Step 2 — clone repo
 ```bash
-git clone <repo-url> ~/sentinel
+git clone https://github.com/rainingsnow0914tw-ship-it/clinic-os-sentinel.git ~/sentinel
 cd ~/sentinel/deployment
 ```
 

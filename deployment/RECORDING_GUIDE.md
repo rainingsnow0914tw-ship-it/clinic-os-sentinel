@@ -275,7 +275,7 @@ On Alibaba Cloud Singapore: ECS+OSS+Qwen3.7-max. MIT license. Fictional data.
 ```
 🛡️ The Sentinel
 https://47.84.230.19.nip.io/
-github.com/<your-handle>/clinic-os-sentinel-v3
+github.com/rainingsnow0914tw-ship-it/clinic-os-sentinel
 Qwen Cloud Hackathon 2026
 ```
 
