@@ -1,131 +1,222 @@
-# Clinic OS — 小型診所 AI 輔助營運系統 V1
+# 🛡️ The Sentinel — Longitudinal Memory & Retrospective Coach for Clinical Practice
 
-> Owner: Chloe｜Co-builder: 阿寶 (Claude)
->
-> 這不是 demo，不是 localStorage 玩具。這是要真的部署、真的收費、真的給診所用的系統。
-
----
-
-## 一句話定位
-
-**一套給小型診所使用的 clinic operating system，整合病人、病歷、處方、庫存、收據、文件、AI 草稿、A2A-ready agent 接口的雲端系統。**
-
-核心原則：
-- 醫生負責**醫療決策**
-- 系統負責**資料連動**
-- AI 負責**整理、草稿、提醒、查漏**
-- AI **不可以**直接寫入正式病歷、處方、收據
-- 所有正式動作都要有人類確認
+> **Qwen Cloud Hackathon 2026 — Track 1 (MemoryAgent) main + Track 4 (Autopilot) supporting**
+> Submitted by **Dr. Chloe** (clinical researcher) and **Code 阿寶** (AI engineering pair)
+> Live demo: **https://47.84.230.19.nip.io/**
+> Submission deadline: 2026-07-09 14:00 PT
 
 ---
 
-## 技術棧
+## 30-second pitch
 
-| 層 | 技術 | 為什麼 |
-|---|---|---|
-| Frontend | Vite + React + TypeScript | Cloud Shell 開發輕巧、TS 對商業化更安全 |
-| Backend | FastAPI (Python 3.11) | Pydantic 自動驗證 schema，醫療系統必備 |
-| ORM | SQLAlchemy 2.0 + Alembic | 業界標準，migration 版本控制 |
-| Database | Cloud SQL PostgreSQL 15 | ACID、JSONB、行級權限 |
-| Auth | Firebase Auth | 沿用 Pinky 經驗、SSO 友善 |
-| Storage | Google Cloud Storage | 儲存收據/病假紙/轉診信 PDF |
-| Backend host | Cloud Run | 按用量計費、autoscale |
-| Frontend host | Firebase Hosting | 全球 CDN |
-| AI | Gemini / OpenAI / Claude（可插拔） | prompt 不寫死，存在 `ai_prompt_templates` |
+Family doctors lose information across visits.
+
+A patient comes back six months later, mentions *"oh, my memory has been a bit off lately"* — and unless the doctor reads the full history (they rarely do), that one sentence dies in the chart. Three visits later, the patient falls, and **nobody connects the dots**.
+
+**The Sentinel** is a four-agent diagnostic layer built on **Qwen3.7-max** that does two things no single-visit AI does:
+
+1. **Memory accumulates across visits.** Every visit auto-evolves a per-patient "heart layer" (problems / medications / flags / baselines). Soft observations like *"occasionally forgetful"* live in a `to_observe` state across visits, then **automatically escalate to `confirmed` red flags** when re-observed — even if the doctor doesn't notice.
+2. **The system retrospectively trains the doctor.** A built-in "AI Review" replays any past visit with the heart-layer-as-it-was-then, runs four Qwen agents, and surfaces what the doctor missed. The doctor can pin that lesson to a personal **watchlist** — next time they see *any* patient with that pattern, a banner reminds them.
+
+This is what we mean by *MemoryAgent that closes the loop*: AI memory grows in both directions — forward (across patient visits) **and** backward (into doctor education).
 
 ---
 
-## Repo 結構
+## The setting (Track 1 demo: Auntie Wang)
+
+We built a synthetic four-visit case spanning nine months to demonstrate the entire loop end-to-end:
+
+| Visit | Date | What happens | What the heart layer remembers |
+|---|---|---|---|
+| **1** | 2025-09-20 | Auntie Wang (68F) presents with dizziness, BP 158/95 → diagnosed **hypertension** + prescribed **amlodipine** | New chronic problem; new long-term medication; BP baseline started |
+| **2** | 2025-10-15 | 4-week follow-up, BP 148/88, trending controlled | BP baseline updated; problem status active-controlled |
+| **3** | 2026-02-15 | Chronic follow-up; patient mentions *"occasionally forgetful"*; doctor also prescribes **ibuprofen** for knee pain (PRN) | New `to_observe` flag: 偶爾忘東西 (occasional forgetfulness); short-term Rx not promoted to long-term |
+| **4** | 2026-06-26 | BP back up to 158/94 *despite amlodipine compliance*; forgetfulness **noticeably worse**; **fall** last week | Phase 5 evolution **auto-escalates the forgetfulness flag from `to_observe` → `confirmed` (yellow → red)** |
+
+Now the demo unfolds:
+- The doctor opens visit 4 and clicks **「🔁 Run AI Retrospective Review」**.
+- The system runs four Qwen3.7-max agents against the heart-layer-reconstructed-as-of-this-visit (not today's), and **injects every prior visit's diagnosis and prescription** as context.
+- The **Audit agent** flags it: *"NSAIDs (ibuprofen) antagonize the antihypertensive effect of amlodipine and may cause renal afferent vasoconstriction — relevant to both the BP rebound and the fall in an elderly patient on antihypertensive therapy."*
+- That was hiding in plain sight across three visits. The doctor pins **「📌 Save to watchlist」**.
+- The next time the doctor opens *any* new visit, the top of the page shows: *"📌 You learned 1 lesson: ibuprofen + amlodipine interaction in elderly hypertensive patients."*
+
+This is the closed loop the Track 1 brief asks for.
+
+---
+
+## Architecture
 
 ```
-clinic-os/
-├── README.md                    ← 你在這裡
-├── docs/                        ← 七份核心文件，看診前必讀
-│   ├── PRD.md
-│   ├── DATABASE_SCHEMA.md
-│   ├── API_SPEC.md
-│   ├── WORKFLOWS.md
-│   ├── AI_BOUNDARY.md
-│   ├── A2A_READY_ARCHITECTURE.md
-│   └── HANDOVER.md              ← 換對話框時讀這份
-├── backend/                     ← FastAPI 後端
+                         Browser
+                            │
+                            ▼
+        ┌───────────────────────────────────────┐
+        │ Alibaba Cloud ECS (Singapore)          │
+        │   Ubuntu 22.04, ecs.e-c1m2.large       │
+        │                                        │
+        │   ┌─────────────────────────────┐     │
+        │   │ Caddy 2 (auto Let's Encrypt)│     │ ─── HTTPS, HTTP/3
+        │   │ • SPA serve /srv/frontend   │     │     :80, :443
+        │   │ • reverse_proxy /api/*  /v1/* │   │
+        │   └────────────┬────────────────┘     │
+        │                │ docker network        │
+        │   ┌────────────▼────────────────┐     │
+        │   │ FastAPI (uvicorn, 2 workers)│     │
+        │   │ • 4 sentinel agents         │     │
+        │   │ • heart-layer evolution     │     │
+        │   │ • Mode A reconstruct        │     │
+        │   │ • doctor_watchlist          │     │
+        │   └────────────┬────────────────┘     │
+        │                │                       │
+        │   ┌────────────▼────────────────┐     │
+        │   │ PostgreSQL 16 (alembic 0007)│     │
+        │   │ 22 tables, heart layer + AI │     │
+        │   │ drafts + snapshots          │     │
+        │   └─────────────────────────────┘     │
+        └─────────────────┬─────────────────────┘
+                          │ HTTPS (REST)
+                          ▼
+        ┌───────────────────────────────────────┐
+        │ Alibaba Cloud DashScope International   │
+        │ dashscope-intl.aliyuncs.com            │
+        │ • qwen3.7-max (4 agents)               │
+        │ • qwen3.7-plus (vision)                │
+        │ • paraformer-v2 (ASR)                  │
+        └───────────────────────────────────────┘
+
+   Side: Alibaba Cloud OSS bucket `sentinel-demo-2026`
+         (Singapore, frontend dist backup, public-read)
+```
+
+Full diagram + service inventory: [`deployment/architecture.md`](deployment/architecture.md)
+Deployment proof: [`deployment/ALIYUN.md`](deployment/ALIYUN.md)
+
+---
+
+## Try it (no login required)
+
+The system runs in dev-bypass auth mode for judges — just open the URL.
+
+| | URL |
+|---|---|
+| **Live web app** | https://47.84.230.19.nip.io/ |
+| Health | https://47.84.230.19.nip.io/v1/sentinel/health |
+| Patient search | https://47.84.230.19.nip.io/v1/sentinel/patients?q=王 |
+| Drug categories | https://47.84.230.19.nip.io/v1/sentinel/drugs/categories |
+| Doctor watchlist | https://47.84.230.19.nip.io/v1/sentinel/watchlist |
+
+Step-by-step walkthrough: [`deployment/LIVE_DEMO.md`](deployment/LIVE_DEMO.md)
+
+---
+
+## Track 1 — MemoryAgent (primary)
+
+The hackathon brief asks for AI that **accumulates memory across interactions and gets smarter over time**. Concretely we implement:
+
+1. **Heart layer (`patient_problems`, `patient_medications`, `patient_flags`, `patient_baselines`)** — per-patient long-term state, updated automatically when a visit completes.
+2. **`evolve_heart_layer_after_visit`** — a deterministic post-visit hook (Phase 5) that translates the visit's diagnosis, prescription, and AI audit findings into heart-layer mutations: new chronic problems get inferred; long-term medications get promoted from one-off prescriptions; anomalies enter as `to_observe` and **auto-escalate to `confirmed` on second observation across visits**; vitals append to baseline trends.
+3. **Heart layer snapshots (`heart_layer_snapshots`)** — every visit takes a `before_visit` and `after_visit` snapshot, frozen-in-time. This is what enables Mode A.
+4. **Mode A reconstruct (`reconstruct_heart_at`)** — replays AI agents against the heart-layer-as-it-was, not as it is now. Critical to *avoid hindsight bias* — the AI sees only what was knowable at the time, plus prior visits' raw dictations and working hypotheses.
+5. **Doctor watchlist (`doctor_watchlists`)** — the doctor pins a lesson learned from a Mode A review; future new-visit pages show this lesson as a banner. The AI literally retrospectively trains the doctor.
+
+---
+
+## Track 4 — Autopilot (supporting)
+
+The new-visit page is engineered to make Qwen3.7-max do all the cognitive heavy lifting, so the doctor stays focused on the patient:
+
+- Dictate or type the chief complaint, HPI, physical exam, and diagnosis.
+- Add prescriptions via **category dropdown → drug type-ahead → frequency → days**; quantity auto-computed.
+- Hit submit. **Four agents run in parallel** (~30–50 s):
+  - `intake_agent`: structured chart from raw dictation, flags anomalies.
+  - `triage_agent`: differential ranking with working hypotheses and red-flag rule-outs.
+  - `audit_agent`: cross-checks every prescribed drug against the heart layer (allergies, interactions, chronic conditions) using **RxNorm + openFDA + rule engine**; brand and generic name written together so Qwen can find both.
+  - `education_agent`: patient-friendly summary in plain language.
+- All four results are persisted in `ai_drafts` and replayable from the patient detail page.
+
+---
+
+## Tech stack
+
+- **Frontend**: React 18 + TypeScript + Vite 5 + React Router 6 + axios + Zustand
+- **Backend**: FastAPI + SQLAlchemy 2 (async) + Alembic + Pydantic v2
+- **Database**: PostgreSQL 16 (22 tables across 7 alembic migrations)
+- **LLM provider**: Alibaba Cloud DashScope International (`qwen3.7-max`, `qwen3.7-plus`, `paraformer-v2`)
+- **Medical APIs**: RxNorm, openFDA, PubMed (via the audit agent)
+- **Deployment**: Docker Compose on Alibaba Cloud ECS (Ubuntu 22.04, Singapore region)
+- **Reverse proxy / TLS**: Caddy 2 with Let's Encrypt (auto-renewal)
+
+---
+
+## Alibaba Cloud services used (compliance)
+
+Per hackathon rules: *"You must demonstrate that the backend is running on Alibaba Cloud."*
+
+| Service | Where in code | Purpose |
+|---|---|---|
+| **ECS** (Singapore) | [`deployment/docker-compose.yml`](deployment/docker-compose.yml), [`deployment/ALIYUN.md`](deployment/ALIYUN.md) | Compute host for FastAPI + PostgreSQL + Caddy |
+| **OSS** (Standard, Singapore) | OSS bucket `sentinel-demo-2026`; upload code in [`deployment/ALIYUN.md`](deployment/ALIYUN.md) | Frontend dist backup, public-read; auxiliary asset host |
+| **DashScope International** | [`backend/app/providers/qwen.py`](backend/app/providers/qwen.py), [`backend/app/agents/`](backend/app/agents/) | All four sentinel agents call `qwen3.7-max` via `https://dashscope-intl.aliyuncs.com/api/v1` |
+
+Detailed proof: [`deployment/ALIYUN.md`](deployment/ALIYUN.md).
+
+---
+
+## Repository layout
+
+```
+clinic-os-sentinel-v3/
+├── README.md                   ← you are here (English master entry)
+├── LICENSE                     ← MIT
+├── SENTINEL_HANDOVER.md        ← internal handover (Traditional Chinese)
+├── backend/
 │   ├── app/
-│   │   ├── main.py              ← FastAPI app 入口
-│   │   ├── core/                ← config / database / security
-│   │   ├── middleware/          ← auth / clinic_permission
-│   │   ├── models/              ← SQLAlchemy ORM models
-│   │   ├── schemas/             ← Pydantic request/response
-│   │   ├── routes/              ← API endpoints
-│   │   ├── services/            ← 商業邏輯（藥量計算、FEFO 扣庫存…）
-│   │   └── utils/
-│   ├── alembic/                 ← Database migrations
-│   ├── tests/
-│   ├── requirements.txt
-│   ├── Dockerfile
-│   └── .env.example
-├── frontend/                    ← Vite + React + TS 前端
-│   ├── src/
-│   │   ├── pages/               ← 路由頁面
-│   │   ├── components/          ← UI 元件
-│   │   ├── hooks/               ← 自訂 React hooks
-│   │   ├── services/            ← API client
-│   │   ├── lib/                 ← Firebase init / utils
-│   │   └── types/               ← TS 型別定義
-│   ├── package.json
-│   ├── vite.config.ts
-│   └── .env.example
+│   │   ├── agents/             ← 4 sentinel agents
+│   │   ├── providers/qwen.py   ← DashScope intl client
+│   │   ├── services/           ← heart-layer evolution, mode A reconstruct
+│   │   ├── rules/              ← drug-interaction rule engine
+│   │   ├── medical_apis/       ← RxNorm, openFDA, PubMed
+│   │   └── routes/             ← /v1/sentinel/*
+│   ├── alembic/                ← 0001 → 0007 migrations
+│   ├── scripts/                ← seed scripts, including Auntie Wang quartet
+│   └── seed_data/              ← reproducible mock data
+├── frontend/
+│   └── src/
+│       ├── pages/SentinelPatients/   ← v3 patient search + detail + new visit
+│       └── services/sentinelApi.ts   ← typed REST client
 └── deployment/
-    ├── cloud-run.yaml
-    └── firebase.json
+    ├── ALIYUN.md               ← Alibaba Cloud proof + deployment SOP (English)
+    ├── LIVE_DEMO.md            ← 90-second judge walkthrough (English)
+    ├── architecture.md         ← architecture diagram (English)
+    ├── docker-compose.yml      ← ECS stack
+    ├── Caddyfile               ← HTTPS, SPA serve, reverse proxy
+    └── backend.env.example     ← env var template
 ```
 
----
-
-## Sprint 路線圖
-
-| Sprint | 目標 | 狀態 |
-|---|---|---|
-| 0 | Repo 骨架 + docs + skeleton | 🟡 阿寶寫中 |
-| 1 | Auth + clinics + memberships + audit log | ⚪ |
-| 2 | Patients + visits CRUD | ⚪ |
-| 3 | Drugs + drug_batches + stock_movements | ⚪ |
-| 4 | Prescriptions + 自動算藥量 + FEFO 扣庫存 | ⚪ |
-| 5 | Invoices + receipt PDF | ⚪ |
-| 6 | Sick leave + referral letter PDF | ⚪ |
-| 7 | AI 草稿（SOAP / referral / sick leave / inventory alert） | ⚪ |
-| 8 | A2A-ready（agent_registry / agent_tasks / agent_events） | ⚪ |
-
-**目前在 Sprint 0。**
+The repo's internal handover (`SENTINEL_HANDOVER.md`) and code-level inline comments are mostly in Traditional Chinese — this is the working team's primary language. Per hackathon rules, all *submission materials* (this README, demo video, testing instructions, architecture diagram, Devpost write-up) are in English.
 
 ---
 
-## 商業化 14 條底線（不可妥協）
+## Data scope & privacy disclaimer
 
-1. ❌ 不可使用 localStorage 存正式病歷
-2. ❌ 不可前端直接寫資料庫
-3. ✅ 所有核心資料必須有 `clinic_id`
-4. ✅ 所有 API 必須檢查登入與權限
-5. ❌ 病歷不可硬刪，只能 void / archive
-6. ✅ 收據作廢必須留原因
-7. ✅ 庫存異動必須寫 `stock_movements`
-8. ❌ AI 不可直接寫正式表
-9. ✅ AI 草稿必須人類確認
-10. ❌ 文件與 prompt 不要寫死
-11. ❌ 費用項目不要寫死
-12. ✅ 外部接口用 `integrations` / `external_mappings`
-13. ✅ Agent 任務用 `agent_tasks` / `agent_events`
-14. ✅ 重要行為寫 `audit_logs`
+- **101 synthetic patients** + **182 visits** + **24 patient flags** + **58 problems** + **77 long-term medications** + **400+ baselines** + **20 AI drafts** + Auntie Wang's 4-visit quartet with 10 heart-layer snapshots.
+- All names, ID numbers, addresses, and clinical events are **fictional**, generated with deterministic seeds (see [`backend/scripts/extend_mock_patients.py`](backend/scripts/extend_mock_patients.py) and [`backend/scripts/seed_wang_aunt_quartet.py`](backend/scripts/seed_wang_aunt_quartet.py)).
+- **No real patient data is used anywhere in this project.**
+- This is a **sandbox demonstration**. AI suggestions are for educational illustration only and **do not constitute medical advice**.
 
 ---
 
-## 給未來阿寶的話
+## License
 
-如果你是新對話框的阿寶，看到這份 README：
+MIT — see [`LICENSE`](LICENSE).
 
-1. 先讀 `docs/HANDOVER.md`，了解目前 sprint 進度
-2. 再讀 `docs/PRD.md` 確認產品定位
-3. `docs/DATABASE_SCHEMA.md` 是真實 source of truth，不是 main.py
-4. **不要重新發明輪子**——這份規格 Chloe 已經想很久了
-5. **不要改技術棧**——除非有 critical 理由
+---
 
-— 阿寶 ❤️
+## Credits
+
+- **Dr. Chloe** — clinical design, demo direction, all UX feedback (the audit pass that found the Mode A hindsight-leak bug was hers).
+- **Code 阿寶** — implementation pair across the full stack.
+- **Qwen3.7-max** — every clinical reasoning call in the demo.
+- **Open medical APIs** — RxNorm, openFDA, PubMed.
+
+Built for **Qwen Cloud Hackathon 2026**.
