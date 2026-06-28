@@ -50,3 +50,9 @@ temp/
 *.bak
 .venv/
 *.db
+
+# Hackathon-internal docs — kept locally, not pushed (would expose draft/script)
+SENTINEL_HANDOVER.md
+deployment/DEVPOST_SUBMISSION.md
+deployment/VIDEO_SCRIPT.md
+deployment/RECORDING_GUIDE.md

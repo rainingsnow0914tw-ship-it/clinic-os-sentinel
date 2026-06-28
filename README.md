@@ -195,7 +195,7 @@ clinic-os-sentinel-v3/
     └── backend.env.example     ← env var template
 ```
 
-The repo's internal handover (`SENTINEL_HANDOVER.md`) and code-level inline comments are mostly in Traditional Chinese — this is the working team's primary language. Per hackathon rules, all *submission materials* (this README, demo video, testing instructions, architecture diagram, Devpost write-up) are in English.
+Code-level inline comments are mostly in Traditional Chinese — this is the working team's primary language. Per hackathon rules, all *submission materials* (this README, demo video, testing instructions, architecture diagram, Devpost write-up) are in English.
 
 ---
 
