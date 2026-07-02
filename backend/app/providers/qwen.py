@@ -37,6 +37,44 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================
+# Shared httpx client (Phase 8 warmup fix)
+# ============================================================
+# 之前每次 chat 都 `async with httpx.AsyncClient(...)` 新建 client,
+# 每次 TLS + DNS + auth handshake cold-start. 第一次 review 4 個 agent
+# parallel = 4 個 cold client = 90s+ 有時 timeout.
+# 改成 module-level shared client + connection pool + keep-alive.
+# 配合 main.py lifespan startup 內做一次 warmup call, 之後全部 warm.
+# ------------------------------------------------------------
+_shared_client: httpx.AsyncClient | None = None
+_client_lock = asyncio.Lock()
+
+
+async def _get_shared_client() -> httpx.AsyncClient:
+    global _shared_client
+    if _shared_client is None:
+        async with _client_lock:
+            if _shared_client is None:
+                _shared_client = httpx.AsyncClient(
+                    timeout=settings.QWEN_REQUEST_TIMEOUT,
+                    limits=httpx.Limits(
+                        max_connections=20,
+                        max_keepalive_connections=10,
+                        keepalive_expiry=60.0,
+                    ),
+                    http2=False,  # DashScope intl 不支援 h2, 走 h1.1 + keep-alive
+                )
+    return _shared_client
+
+
+async def close_shared_qwen_client() -> None:
+    """給 main.py lifespan shutdown 用."""
+    global _shared_client
+    if _shared_client is not None:
+        await _shared_client.aclose()
+        _shared_client = None
+
+
+# ============================================================
 # DashScope REST API endpoints
 # ============================================================
 # 文字模型(qwen-max / qwen-plus / qwen-turbo)：
@@ -182,9 +220,9 @@ class QwenProvider(LLMProvider):
             "Content-Type": "application/json",
         }
 
-        async with httpx.AsyncClient(timeout=settings.QWEN_REQUEST_TIMEOUT) as client:
-            logger.debug(f"POST {url} model={body.get('model')}")
-            resp = await client.post(url, json=body, headers=headers)
+        client = await _get_shared_client()
+        logger.debug(f"POST {url} model={body.get('model')}")
+        resp = await client.post(url, json=body, headers=headers)
 
         if resp.status_code != 200:
             logger.error(

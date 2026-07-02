@@ -66,9 +66,40 @@ async def lifespan(app: FastAPI):
     logger.info(f"Starting Clinic OS API in {settings.APP_ENV} mode")
     init_firebase_admin()
     logger.info("Firebase Admin initialized")
+
+    # Phase 8 warmup: 預熱 Qwen shared client (TLS + DNS + auth handshake)
+    # 之後第一次 review 不會因 4 個 agent parallel cold-start 而 timeout.
+    import asyncio as _asyncio
+    try:
+        from app.providers.qwen import QwenProvider, _get_shared_client
+        from app.providers.base import ChatMessage
+        await _get_shared_client()  # 建 client (內部延遲到首次 request)
+        provider = QwenProvider()
+        try:
+            await _asyncio.wait_for(
+                provider.chat(
+                    messages=[ChatMessage(role="user", content="ok")],
+                    max_tokens=1,
+                    temperature=0.0,
+                ),
+                timeout=30.0,
+            )
+            logger.info("Qwen provider warmed up (TLS+auth handshake done)")
+        except _asyncio.TimeoutError:
+            logger.warning("Qwen warmup call did not complete in 30s (OK — real requests will still work)")
+        except Exception as e:
+            logger.warning(f"Qwen warmup call failed (OK, real requests will still work): {e}")
+    except Exception as e:
+        logger.warning(f"Qwen warmup skipped: {e}")
+
     yield
     # === 關閉 ===
     logger.info("Shutting down Clinic OS API")
+    try:
+        from app.providers.qwen import close_shared_qwen_client
+        await close_shared_qwen_client()
+    except Exception as e:
+        logger.warning(f"Qwen client shutdown failed: {e}")
 
 
 # ============================================================
