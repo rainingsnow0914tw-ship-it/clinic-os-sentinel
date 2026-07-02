@@ -98,6 +98,91 @@ app.add_middleware(
 
 
 # ============================================================
+# Phase 8 安全: In-memory per-IP rate limiter
+# ============================================================
+# 目的: 防止機器人 / scanner 找到 POST endpoint 大量濫用消耗 Qwen quota
+# 或污染 demo data. Simple in-memory sliding window, 對 hackathon demo 夠用.
+# 生產環境要換 Redis + slowapi.
+# ------------------------------------------------------------
+from collections import defaultdict
+from time import monotonic
+
+_IP_TOTAL_HITS: dict[str, list[float]] = defaultdict(list)
+_IP_WRITE_HITS: dict[str, list[float]] = defaultdict(list)
+_TOTAL_PER_MIN = 120        # 讀+寫 all methods per IP per minute
+_WRITE_PER_MIN = 15         # POST/PUT/DELETE/PATCH per IP per minute
+_HEAVY_PATH_LIMIT = 6       # /review 跟 create-visit 這種會打 Qwen 的 per minute
+_WINDOW = 60.0
+
+# 個別限更嚴的重路徑 (每次會呼叫 Qwen 4 agent, 貴)
+_HEAVY_PREFIXES = (
+    "/v1/sentinel/visits/",         # POST /visits/{id}/review
+    "/v1/sentinel/patients/",       # POST /patients/{id}/visits (create visit)
+)
+
+_IP_HEAVY_HITS: dict[str, list[float]] = defaultdict(list)
+
+
+def _prune(bucket: list[float], now: float) -> list[float]:
+    cutoff = now - _WINDOW
+    return [t for t in bucket if t > cutoff]
+
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    # 從 forwarded header 拿真 client IP (Caddy 有加 X-Forwarded-For)
+    fwd = request.headers.get("x-forwarded-for", "")
+    ip = fwd.split(",")[0].strip() if fwd else (request.client.host if request.client else "unknown")
+    now = monotonic()
+    method = request.method
+    path = request.url.path
+
+    # health / OPTIONS preflight 不算
+    if path.endswith("/health") or method == "OPTIONS":
+        return await call_next(request)
+
+    # 總量檢查
+    total = _prune(_IP_TOTAL_HITS[ip], now)
+    if len(total) >= _TOTAL_PER_MIN:
+        return JSONResponse(
+            status_code=429,
+            content={"detail": f"Rate limit: too many requests from your IP. Try again in a minute."},
+        )
+
+    # write 檢查
+    is_write = method in {"POST", "PUT", "DELETE", "PATCH"}
+    if is_write:
+        write_bucket = _prune(_IP_WRITE_HITS[ip], now)
+        if len(write_bucket) >= _WRITE_PER_MIN:
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "Rate limit: too many write requests. Try again in a minute."},
+            )
+
+        # 重路徑檢查 (Qwen billing 保護)
+        if any(path.startswith(p) for p in _HEAVY_PREFIXES) and "/visits" in path:
+            heavy_bucket = _prune(_IP_HEAVY_HITS[ip], now)
+            if len(heavy_bucket) >= _HEAVY_PATH_LIMIT:
+                return JSONResponse(
+                    status_code=429,
+                    content={
+                        "detail": "Rate limit: this endpoint triggers Qwen agents and is limited to "
+                                  f"{_HEAVY_PATH_LIMIT} calls per minute per IP to protect the demo budget."
+                    },
+                )
+            heavy_bucket.append(now)
+            _IP_HEAVY_HITS[ip] = heavy_bucket
+
+        write_bucket.append(now)
+        _IP_WRITE_HITS[ip] = write_bucket
+
+    total.append(now)
+    _IP_TOTAL_HITS[ip] = total
+
+    return await call_next(request)
+
+
+# ============================================================
 # 全域 exception handler（讓錯誤格式統一）
 # ============================================================
 @app.exception_handler(Exception)

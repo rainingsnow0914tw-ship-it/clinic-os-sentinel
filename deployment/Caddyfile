@@ -10,6 +10,11 @@
 {$DOMAIN} {
     encode gzip zstd
 
+    # Phase 8 安全: 限 request body 1MB (防大 payload attack)
+    request_body {
+        max_size 1MB
+    }
+
     # API: axios baseURL = /api → strip 後 backend 收 /v1/...
     handle_path /api/* {
         reverse_proxy backend:8080
